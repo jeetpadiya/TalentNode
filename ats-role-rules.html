@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ATS Roles and Rules</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.5;
+      color: #1f2937;
+      margin: 40px;
+    }
+    h1, h2 {
+      color: #111827;
+    }
+    h1 {
+      border-bottom: 2px solid #d1d5db;
+      padding-bottom: 8px;
+    }
+    h2 {
+      margin-top: 28px;
+    }
+    ul {
+      margin-top: 8px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 16px;
+      font-size: 14px;
+    }
+    th, td {
+      border: 1px solid #d1d5db;
+      padding: 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: #f3f4f6;
+    }
+    .small {
+      color: #4b5563;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <h1>ATS Roles and Rules</h1>
+  <p class="small">
+    MVP role definition for TalentNode Application Tracking System.
+  </p>
+
+  <h2>Core Idea</h2>
+  <ul>
+    <li><strong>Candidate</strong>: applies to jobs and tracks their own applications.</li>
+    <li><strong>Recruiter</strong>: manages jobs, applications, and hiring pipeline.</li>
+    <li><strong>Hiring Manager</strong>: reviews candidates and participates in hiring decisions.</li>
+    <li><strong>Interviewer</strong>: accesses assigned interviews and submits interview feedback.</li>
+    <li><strong>Admin</strong>: manages organization-wide users, jobs, permissions, and settings.</li>
+  </ul>
+
+  <h2>Candidate Rules</h2>
+  <ul>
+    <li>Can sign up publicly.</li>
+    <li>Can view public and open jobs.</li>
+    <li>Can apply to jobs.</li>
+    <li>Can view and update only their own profile.</li>
+    <li>Can view only their own applications.</li>
+    <li>Cannot create jobs.</li>
+    <li>Cannot view other candidates.</li>
+    <li>Cannot move application stages.</li>
+    <li>Cannot manage team members or organization settings.</li>
+  </ul>
+
+  <h2>Recruiter Rules</h2>
+  <ul>
+    <li>Can create, edit, publish, and archive jobs.</li>
+    <li>Can view all jobs in their organization.</li>
+    <li>Can view all applications in their organization.</li>
+    <li>Can move applications through pipeline stages.</li>
+    <li>Can add notes to candidates and applications.</li>
+    <li>Can shortlist or reject candidates.</li>
+    <li>Can schedule interviews.</li>
+    <li>Can view candidate profiles tied to organization jobs.</li>
+    <li>Cannot manage global platform settings.</li>
+  </ul>
+
+  <h2>Hiring Manager Rules</h2>
+  <ul>
+    <li>Can view jobs they own or are assigned to.</li>
+    <li>Can view applicants for assigned jobs.</li>
+    <li>Can review candidate profiles and resumes.</li>
+    <li>Can leave feedback and notes.</li>
+    <li>Can move candidates between limited stages based on business rules.</li>
+    <li>Can approve or reject hiring decisions if your process allows it.</li>
+    <li>Cannot access unrelated jobs by default.</li>
+    <li>Cannot manage organization users unless explicitly allowed.</li>
+  </ul>
+
+  <h2>Interviewer Rules</h2>
+  <ul>
+    <li>Can view only interviews assigned to them.</li>
+    <li>Can view limited candidate details for assigned interviews.</li>
+    <li>Can submit interview feedback.</li>
+    <li>Can submit recommendations such as strong_yes, yes, no, or strong_no.</li>
+    <li>Cannot create or edit jobs.</li>
+    <li>Cannot move the full application pipeline by default.</li>
+    <li>Cannot view all candidate or organization data.</li>
+  </ul>
+
+  <h2>Admin Rules</h2>
+  <ul>
+    <li>Has full access inside their organization.</li>
+    <li>Can manage users and assign roles.</li>
+    <li>Can create, edit, and archive all jobs.</li>
+    <li>Can view all applications.</li>
+    <li>Can manage pipeline settings.</li>
+    <li>Can manage organization settings.</li>
+    <li>Can view reports and dashboard data.</li>
+    <li>Can invite, deactivate, and reset staff accounts.</li>
+    <li>Should be the only role allowed to promote others to admin.</li>
+  </ul>
+
+  <h2>Permission Matrix</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Permission</th>
+        <th>Allowed Roles</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>view_own_profile</td><td>candidate, recruiter, hiring_manager, interviewer, admin</td></tr>
+      <tr><td>update_own_profile</td><td>candidate, recruiter, hiring_manager, interviewer, admin</td></tr>
+      <tr><td>view_public_jobs</td><td>candidate, recruiter, hiring_manager, interviewer, admin</td></tr>
+      <tr><td>apply_to_job</td><td>candidate</td></tr>
+      <tr><td>view_own_applications</td><td>candidate</td></tr>
+      <tr><td>create_job</td><td>recruiter, admin</td></tr>
+      <tr><td>edit_job</td><td>recruiter, admin</td></tr>
+      <tr><td>archive_job</td><td>recruiter, admin</td></tr>
+      <tr><td>view_org_jobs</td><td>recruiter, hiring_manager, interviewer, admin</td></tr>
+      <tr><td>view_org_applications</td><td>recruiter, hiring_manager, admin</td></tr>
+      <tr><td>move_application_stage</td><td>recruiter, hiring_manager, admin</td></tr>
+      <tr><td>leave_candidate_notes</td><td>recruiter, hiring_manager, interviewer, admin</td></tr>
+      <tr><td>schedule_interview</td><td>recruiter, hiring_manager, admin</td></tr>
+      <tr><td>submit_interview_feedback</td><td>interviewer, hiring_manager, admin</td></tr>
+      <tr><td>manage_team_members</td><td>admin</td></tr>
+      <tr><td>assign_roles</td><td>admin</td></tr>
+      <tr><td>view_org_reports</td><td>recruiter, hiring_manager, admin</td></tr>
+      <tr><td>manage_organization_settings</td><td>admin</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Data Access Rules</h2>
+  <ul>
+    <li>Every staff role must be scoped to <strong>organizationId</strong>.</li>
+    <li>Candidates must never access another candidate's data.</li>
+    <li>Interviewers should only access assigned interviews and candidate records.</li>
+    <li>Hiring managers should only access jobs they own or are assigned to.</li>
+    <li>Recruiters and admins can access organization-wide jobs and applications.</li>
+  </ul>
+
+  <h2>MVP Middleware Recommendations</h2>
+  <ul>
+    <li>authenticateUser</li>
+    <li>authorizeRoles("admin")</li>
+    <li>authorizeRoles("recruiter", "admin")</li>
+    <li>authorizeRoles("hiring_manager", "recruiter", "admin")</li>
+    <li>authorizeRoles("interviewer", "hiring_manager", "recruiter", "admin")</li>
+  </ul>
+</body>
+</html>
