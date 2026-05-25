@@ -50,4 +50,13 @@ export const createOrganizationSchema = z.object({
     logoUrl: optionalUrlSchema("logo URL").optional(),
 });
 
+export const inviteOrganizationTeamMemberSchema = z.object({
+    email: z
+        .string()
+        .trim()
+        .email("Please provide a valid email address")
+        .transform((value) => value.toLowerCase()),
+    role: z.enum(["recruiter", "hiring_manager", "interviewer", "admin"]).default("recruiter"),
+});
+
 export { slugifyOrganizationName };

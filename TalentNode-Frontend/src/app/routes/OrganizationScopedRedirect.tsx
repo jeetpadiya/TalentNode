@@ -11,7 +11,7 @@ const OrganizationScopedRedirect = ({
   const user = useAuthStore((state) => state.user)
 
   if (!user?.organizationId) {
-    return <Navigate to="/organizations/create" replace />
+    return <Navigate to="/organizations/new" replace />
   }
 
   return (

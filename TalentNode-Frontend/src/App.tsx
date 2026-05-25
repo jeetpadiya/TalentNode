@@ -8,7 +8,10 @@ import PublicRoutes from './app/routes/PublicRoutes'
 import ApplicationsPage from './features/applications/pages/ApplicationsPage'
 import LoginPage from './features/auth/pages/LoginPage'
 import RegisterPage from './features/auth/pages/RegisterPage'
-import JobSetup from './features/jobs/components/JobSetup'
+import JobApplicationFormPage from './features/jobs/pages/JobApplicationFormPage'
+import JobHiringStagesPage from './features/jobs/pages/JobHiringStagesPage'
+import JobHiringTeamPage from './features/jobs/pages/JobHiringTeamPage'
+import JobSetupPage from './features/jobs/pages/JobSetupPage'
 import CreateOrganizationPage from './features/organization/pages/CreateOrganizationPage'
 import OrganizationDetailsPage from './features/organization/pages/OrganizationDetailsPage'
 
@@ -17,6 +20,9 @@ import DashboardPage from './features/dashboard/pages/DashboardPage'
 import JobsPage from './features/jobs/pages/JobsPage'
 import NotFoundPage from './pages/NotFoundPage'
 import { OrganizationPage } from './features/organization/pages/OrganizationPage'
+import SettingPage from './features/settings/pages/SettingPage'
+import UserPreferencesPage from './features/settings/pages/UserPreferencesPage'
+import AcceptInvitePage from './features/settings/pages/AcceptInvitePage'
 
 const App = () => {
   return (
@@ -28,9 +34,11 @@ const App = () => {
         </Route>
 
         <Route element={<ProtectedRoutes />}>
+          <Route path="/accept-invite/:token" element={<AcceptInvitePage />} />
+
           <Route element={<MainLayout />}>
             <Route
-              path="/organizations/create"
+              path="/organizations/new"
               element={<CreateOrganizationPage />}
             />
           </Route>
@@ -65,9 +73,28 @@ const App = () => {
                 <Route index element={<OrganizationDetailsPage />} />
                 <Route path="dashboard" element={<DashboardPage />} />
                 <Route path="jobs" element={<JobsPage />} />
-                <Route path="jobs/:jobId/setup" element={<JobSetup />} />
+                <Route path="jobs/:jobId/setup" element={<JobSetupPage />} />
+                <Route
+                  path="jobs/:jobId/application-form"
+                  element={<JobApplicationFormPage />}
+                />
+                <Route
+                  path="jobs/:jobId/hiring-stages"
+                  element={<JobHiringStagesPage />}
+                />
+                <Route
+                  path="jobs/:jobId/hiring-team"
+                  element={<JobHiringTeamPage />}
+                />
                 <Route path="candidates" element={<CandidatesPage />} />
+                {/* <Route path="candidates/:candidateId" element={<CandidatesPage />} /> */}
                 <Route path="applications" element={<ApplicationsPage />} />
+                <Route path="applications/:applicationId" element={<ApplicationsPage />} />
+                <Route path="settings" element={<SettingPage />} />
+                <Route
+                  path="settings/user-preferences"
+                  element={<UserPreferencesPage />}
+                />
               </Route>
             </Route>
           </Route>

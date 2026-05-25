@@ -6,9 +6,10 @@ import {
     jobResponseSchema,
     type Job,
     type CreateJobInput,
-    type UpdateJobInput
-
+    type UpdateJobInput,
 } from './JobSchema'
+
+export type { Job, CreateJobInput, UpdateJobInput } from './JobSchema'
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000/api'
@@ -65,7 +66,7 @@ export const createJob = async (
 ): Promise<Job> => {
   const body = createJobSchema.parse(input)
 
-  const response = await fetch(`${API_BASE_URL}/jobs/create`, {
+  const response = await fetch(`${API_BASE_URL}/jobs`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,

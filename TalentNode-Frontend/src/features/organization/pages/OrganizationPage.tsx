@@ -22,7 +22,7 @@ export const OrganizationPage = () => {
         <button
           type="button"
           aria-label="Create organization"
-          onClick={() => navigate('/organizations/create')}
+          onClick={() => navigate('/organizations/new')}
           className="mb-4 rounded-md border border-gray-300 px-3 py-1 text-lg font-semibold leading-none text-gray-700 hover:bg-gray-50"
         >
           +

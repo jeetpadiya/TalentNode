@@ -28,7 +28,7 @@ const signUserToken = (user: IUser) => {
             organizationId: user.organizationId ?? null
         },
         process.env.JWT_SECRET,
-        { expiresIn: "1h" }
+        { expiresIn: "7d" }
     );
 };
 

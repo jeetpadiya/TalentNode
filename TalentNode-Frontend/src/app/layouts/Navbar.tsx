@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/AuthStore'
 import JobPopUp from '../../features/jobs/components/JobPopUp'
+import { CiSettings } from "react-icons/ci";
+
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   [
@@ -20,7 +22,7 @@ const Navbar = () => {
   const navigate = useNavigate()
   const shouldHideMainNav =
     location.pathname === '/organizations' ||
-    location.pathname === '/organizations/create'
+    location.pathname === '/organizations/new'
   const organizationIdFromPath = location.pathname.match(
     /^\/organizations\/([^/]+)/,
   )?.[1]
@@ -34,6 +36,7 @@ const Navbar = () => {
   const dashboardPath = organizationBasePath
     ? `${organizationBasePath}/dashboard`
     : '/dashboard'
+  const canCreateJobs = user?.role === 'admin' || user?.role === 'recruiter'
 
   const handleLogout = () => {
     logout()
@@ -127,16 +130,22 @@ const Navbar = () => {
           </button>
 
           {organizationBasePath && !shouldHideMainNav ? (
-            <button
-              type="button"
-              onClick={() => setIsJobPopUpOpen(true)}
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-              Create a Job
-            </button>
+            <>
+            {canCreateJobs ? (
+              <button
+                type="button"
+                onClick={() => setIsJobPopUpOpen(true)}
+                className="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                Create a Job
+              </button>
+            ) : null}
+      <CiSettings className='text-2xl absolute right-0 space-x-1 cursor-pointer'  onClick={() => navigate(`${organizationBasePath}/settings`)}/>
+              </>
           ) : null}
         </div>
       </div>
+
       <JobPopUp
         isOpen={isJobPopUpOpen}
         onClose={() => setIsJobPopUpOpen(false)}

@@ -1,9 +1,10 @@
 import { useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../../app/store/AuthStore'
 
 const LoginPage = () => {
   const navigate = useNavigate()
+  const location = useLocation()
   const login = useAuthStore((state) => state.login)
   const isLoading = useAuthStore((state) => state.isLoading)
   const error = useAuthStore((state) => state.error)
@@ -16,10 +17,12 @@ const LoginPage = () => {
     await login(email, password)
 
     const user = useAuthStore.getState().user
+    const from = (location.state as { from?: { pathname?: string } } | null)?.from
     navigate(
-      user?.organizationId
+      from?.pathname ??
+      (user?.organizationId
         ? `/organizations/${user.organizationId}/dashboard`
-        : '/organizations/create',
+        : '/organizations/new'),
     )
   }
 
@@ -67,7 +70,11 @@ const LoginPage = () => {
 
         <p className="mt-4 text-sm text-gray-600">
           New here?{' '}
-          <Link to="/register" className="font-medium text-gray-900">
+          <Link
+            to="/register"
+            state={location.state}
+            className="font-medium text-gray-900"
+          >
             Create an account
           </Link>
         </p>

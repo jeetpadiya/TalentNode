@@ -8,7 +8,7 @@ const OrganizationRequiredRoutes = () => {
   if (!user?.organizationId) {
     return (
       <Navigate
-        to="/organizations/create"
+        to="/organizations/new"
         replace
         state={{ from: location }}
       />

@@ -59,6 +59,46 @@ export type CreateOrganizationRequestBody = {
     logoUrl?: string;
 }
 
+export interface IHiringStageEmbedded {
+    _id?: mongoose.Types.ObjectId;
+    name: string;
+    order: number;
+}
+
+export interface IApplicationField {
+  key: string;
+  label: string;
+  visibility: "Hidden" | "Optional" | "Required";
+}
+
+export interface ICustomQuestion {
+  key: string;
+  question: string;
+  fieldType:
+    | "text"
+    | "textarea"
+    | "select"
+    | "checkbox"
+    | "radio";
+
+  required: boolean;
+
+  options: string[];
+}
+
+export interface IApplicationForm {
+  basicInfo: {
+    phone: "Hidden" | "Optional" | "Required";
+    location: "Hidden" | "Optional" | "Required";
+  };
+
+  links: IApplicationField[];
+
+  fileUploads: IApplicationField[];
+
+  customQuestions: ICustomQuestion[];
+}
+
 export interface IJob extends Document {
     title: string;
     department?: string;
@@ -83,6 +123,8 @@ export interface IJob extends Document {
     organizationId: mongoose.Types.ObjectId;
     createdBy: mongoose.Types.ObjectId;
     hiringManagerId?: mongoose.Types.ObjectId;
+    hiringStages?: IHiringStageEmbedded[];
+    applicationForm?: IApplicationForm;
     createdAt: Date;
     updatedAt: Date;
 }

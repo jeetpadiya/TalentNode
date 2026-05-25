@@ -1,5 +1,24 @@
 import mongoose, { Schema } from "mongoose";
 import type { IJob } from "../types/types.js";
+import { DEFAULT_HIRING_STAGES } from "../constants/defaultHiringStages.js";
+
+const HiringStageEmbeddedSchema = new Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    order: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+  },
+  { _id: true },
+);
+
+
 
 const JobsSchema = new Schema<IJob>(
   {
@@ -104,9 +123,106 @@ const JobsSchema = new Schema<IJob>(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
+    hiringStages: {
+      type: [HiringStageEmbeddedSchema],
+      default: () => [...DEFAULT_HIRING_STAGES],
+    },
+    applicationForm: {
+      basicInfo: {
+        phone: {
+          type: String,
+          enum: ["Hidden", "Optional", "Required"],
+          default: "Optional",
+        },
+
+        location: {
+          type: String,
+          enum: ["Hidden", "Optional", "Required"],
+          default: "Optional",
+        },
+      },
+
+      links: [
+        {
+          key: {
+            type: String,
+            required: true,
+          },
+
+          label: {
+            type: String,
+            required: true,
+          },
+
+          visibility: {
+            type: String,
+            enum: ["Hidden", "Optional", "Required"],
+            default: "Hidden",
+          },
+        },
+      ],
+
+      fileUploads: [
+        {
+          key: {
+            type: String,
+            required: true,
+          },
+
+          label: {
+            type: String,
+            required: true,
+          },
+
+          visibility: {
+            type: String,
+            enum: ["Hidden", "Optional", "Required"],
+            default: "Optional",
+          },
+        },
+      ],
+
+      customQuestions: [
+        {
+          key: {
+            type: String,
+            required: true,
+          },
+
+          question: {
+            type: String,
+            required: true,
+          },
+
+          fieldType: {
+            type: String,
+            enum: [
+              "text",
+              "textarea",
+              "select",
+              "checkbox",
+              "radio",
+            ],
+            default: "text",
+          },
+
+          required: {
+            type: Boolean,
+            default: false,
+          },
+
+          options: {
+            type: [String],
+            default: [],
+          },
+        },
+      ],
+    },
   },
   { timestamps: true }
 );
+
+
 
 const JobsModel = mongoose.model<IJob>("Job", JobsSchema);
 

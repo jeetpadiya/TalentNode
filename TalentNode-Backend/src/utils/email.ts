@@ -1,0 +1,50 @@
+import nodemailer from 'nodemailer'
+
+type OrganizationInviteEmailParams = {
+  to: string
+  organizationName: string
+  inviterName: string
+  role: string
+  inviteUrl: string
+}
+
+const getRequiredEnv = (key: string) => {
+  const value = process.env[key]
+  if (!value) {
+    throw new Error(`${key} is not configured`)
+  }
+
+  return value
+}
+
+export const sendOrganizationInviteEmail = async (
+  params: OrganizationInviteEmailParams,
+) => {
+  const { to, organizationName, inviterName, role, inviteUrl } = params
+
+  const transporter = nodemailer.createTransport({
+    host: getRequiredEnv('SMTP_HOST'),
+    port: Number(process.env.SMTP_PORT ?? 587),
+    secure: process.env.SMTP_SECURE === 'true',
+    auth: {
+      user: getRequiredEnv('SMTP_USER'),
+      pass: getRequiredEnv('SMTP_PASS'),
+    },
+  })
+
+  await transporter.sendMail({
+    from: process.env.SMTP_FROM ?? process.env.SMTP_USER,
+    to,
+    subject: `${inviterName} invited you to join ${organizationName}`,
+    html: `
+      <p>${inviterName} invited you to join <strong>${organizationName}</strong> as <strong>${role}</strong>.</p>
+      <p><a href="${inviteUrl}">Accept invite</a></p>
+      <p>This invite link expires in 7 days.</p>
+    `,
+    text: [
+      `${inviterName} invited you to join ${organizationName} as ${role}.`,
+      `Accept invite: ${inviteUrl}`,
+      'This invite link expires in 7 days.',
+    ].join('\n\n'),
+  })
+}

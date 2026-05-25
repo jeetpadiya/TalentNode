@@ -1,5 +1,10 @@
 import { z } from 'zod'
 
+export const hiringStageSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  order: z.number(),
+})
 
 export const jobSchema = z.object({
   id: z.string().min(1),
@@ -26,6 +31,10 @@ export const jobSchema = z.object({
   organizationId: z.string().min(1),
   createdBy: z.string().min(1),
   hiringManagerId: z.string().nullable(),
+  hiringStages: z.preprocess(
+    (v) => (Array.isArray(v) ? v : []),
+    z.array(hiringStageSchema),
+  ),
   createdAt: z.string(),
   updatedAt: z.string(),
 })

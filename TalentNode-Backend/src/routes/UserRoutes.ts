@@ -1,12 +1,12 @@
 import express from 'express';
 import { registerUser, loginUser, getUserProfile, checkUserEmail } from '../controllers/UserControlller.js';
-import { authenticateToken } from '../middleware/UserMiddleware.js';
+import { authenticate } from '../middleware/authenticate.js';
 
 const router = express.Router();
 
 router.post('/check-email', checkUserEmail);
 router.post('/register', registerUser);
 router.post('/login', loginUser);
-router.get('/profile', authenticateToken, getUserProfile);
+router.get('/profile', authenticate, getUserProfile);
 
 export default router;

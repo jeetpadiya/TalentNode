@@ -1,14 +1,30 @@
 import type { Request, Response } from "express";
 
+import { DEFAULT_HIRING_STAGES } from "../constants/defaultHiringStages.js";
 import JobsModel from "../models/JobsModel.js";
 import UserModel from "../models/UserModel.js";
 import { createJobSchema, updateJobSchema } from "../validations/jobSchemas.js";
+import {
+    canManageOrganizationRecruitingData,
+    getAccessibleJobFilterForUser,
+} from "./helpers/controllerUtils.js";
 
 const formatZodErrors = (issues: Array<{ path: PropertyKey[]; message: string }>) =>
     issues.map((issue) => ({
         field: issue.path.join(".") || "root",
         message: issue.message,
     }));
+
+const serializeHiringStages = (job: any) => {
+    const stages = job.hiringStages ?? [];
+    return [...stages]
+        .sort((a: { order?: number }, b: { order?: number }) => (a.order ?? 0) - (b.order ?? 0))
+        .map((s: { _id: unknown; name: string; order: number }) => ({
+            id: String(s._id),
+            name: s.name,
+            order: s.order,
+        }));
+};
 
 const serializeJob = (job: any) => ({
     id: job._id,
@@ -35,6 +51,7 @@ const serializeJob = (job: any) => ({
     organizationId: job.organizationId,
     createdBy: job.createdBy,
     hiringManagerId: job.hiringManagerId ?? null,
+    hiringStages: serializeHiringStages(job),
     createdAt: job.createdAt,
     updatedAt: job.updatedAt,
 });
@@ -64,6 +81,13 @@ const createJob = async (req: Request, res: Response) => {
             });
         }
 
+        if (!(await canManageOrganizationRecruitingData(userId, String(organizationId)))) {
+            return res.status(403).json({
+                success: false,
+                message: "Only admins and recruiters can create jobs",
+            });
+        }
+
         const payload = parsedBody.data;
         const createdJob = await JobsModel.create({
             ...payload,
@@ -72,6 +96,7 @@ const createJob = async (req: Request, res: Response) => {
             employmentType: payload.employmentType ?? "full_time",
             organizationId,
             createdBy: userId,
+            hiringStages: [...DEFAULT_HIRING_STAGES],
             publishedAt: payload.publishedAt ? new Date(payload.publishedAt) : undefined,
             applicationDeadline: payload.applicationDeadline
                 ? new Date(payload.applicationDeadline)
@@ -105,7 +130,9 @@ const getJobs = async (req: Request, res: Response) => {
             });
         }
 
-        const jobs = await JobsModel.find({ organizationId })
+        const jobFilter = await getAccessibleJobFilterForUser(userId, String(organizationId));
+
+        const jobs = await JobsModel.find(jobFilter)
             .sort({ createdAt: -1 });
 
         return res.status(200).json({
@@ -135,10 +162,23 @@ const getJobById = async (req: Request, res: Response) => {
             });
         }
 
-        const job = await JobsModel.findOne({ _id: id, organizationId });
+        const jobFilter = await getAccessibleJobFilterForUser(userId, String(organizationId));
+
+        let job = await JobsModel.findOne({ ...jobFilter, _id: id });
 
         if (!job) {
             return res.status(404).json({ success: false, message: "Job not found" });
+        }
+
+        if (!job.hiringStages?.length) {
+            await JobsModel.updateOne(
+                { ...jobFilter, _id: id },
+                { $set: { hiringStages: [...DEFAULT_HIRING_STAGES] } },
+            );
+            job = await JobsModel.findOne({ ...jobFilter, _id: id });
+            if (!job) {
+                return res.status(404).json({ success: false, message: "Job not found" });
+            }
         }
 
         return res.status(200).json({
@@ -176,16 +216,26 @@ const updateJob = async (req: Request, res: Response) => {
             });
         }
 
+        if (!(await canManageOrganizationRecruitingData(userId, String(organizationId)))) {
+            return res.status(403).json({
+                success: false,
+                message: "Only admins and recruiters can update jobs",
+            });
+        }
+
         const payload = parsedBody.data;
-        const updatePayload = Object.fromEntries(Object.entries({
-            ...payload,
-            title: payload.title?.trim(),
-            description: payload.description?.trim(),
-            publishedAt: payload.publishedAt ? new Date(payload.publishedAt) : undefined,
-            applicationDeadline: payload.applicationDeadline
-                ? new Date(payload.applicationDeadline)
-                : undefined,
-        }).filter(([, value]) => value !== undefined));
+
+        const updatePayload: Record<string, unknown> = Object.fromEntries(
+            Object.entries({
+                ...payload,
+                title: payload.title?.trim(),
+                description: payload.description?.trim(),
+                publishedAt: payload.publishedAt ? new Date(payload.publishedAt) : undefined,
+                applicationDeadline: payload.applicationDeadline
+                    ? new Date(payload.applicationDeadline)
+                    : undefined,
+            }).filter(([, value]) => value !== undefined),
+        );
 
         const updatedJob = await JobsModel.findOneAndUpdate(
             { _id: req.params.id, organizationId },
@@ -207,5 +257,6 @@ const updateJob = async (req: Request, res: Response) => {
         return res.status(500).json({ success: false, message: "Server error" });
     }
 };
+
 
 export { createJob, getJobs, getJobById, updateJob };

@@ -1,5 +1,25 @@
 import { z } from "zod";
 
+export const hiringStageUpdateSchema = z.object({
+    id: z.string().trim().optional(),
+    name: z.string().trim().min(1, "Stage name is required"),
+    order: z.number().int().min(0),
+});
+
+export const createHiringStageSchema = z.object({
+    name: z.string().trim().min(1, "Stage name is required"),
+    order: z.number().int().min(0).optional(),
+});
+
+export const updateHiringStageSchema = z
+    .object({
+        name: z.string().trim().min(1, "Stage name is required").optional(),
+        order: z.number().int().min(0).optional(),
+    })
+    .refine((value) => Object.keys(value).length > 0, {
+        message: "At least one field is required",
+    });
+
 export const createJobSchema = z.object({
     title: z.string().trim().min(2, "Job title must be at least 2 characters"),
     department: z.string().trim().optional(),
@@ -24,7 +44,8 @@ export const createJobSchema = z.object({
     hiringManagerId: z.string().trim().optional(),
 });
 
-export const updateJobSchema = createJobSchema.partial().refine(
-    (value) => Object.keys(value).length > 0,
-    { message: "At least one field is required" },
-);
+export const updateJobSchema = createJobSchema
+    .partial()
+    .refine((value) => Object.keys(value).length > 0, {
+        message: "At least one field is required",
+    });

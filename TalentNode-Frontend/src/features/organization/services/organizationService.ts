@@ -30,7 +30,7 @@ export const createOrganization = async (
 ): Promise<OrganizationResponse> => {
   const body = createOrganizationSchema.parse(input)
 
-  const response = await fetch(`${API_BASE_URL}/organizations/create`, {
+  const response = await fetch(`${API_BASE_URL}/organizations`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,

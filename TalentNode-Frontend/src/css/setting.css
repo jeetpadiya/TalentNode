@@ -1,0 +1,106 @@
+.setting-sidebar {
+  max-height: calc(100vh - 144px);
+  overflow-y: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 16px;
+  box-shadow: 0 1px 2px rgb(16 24 40 / 0.05);
+}
+
+.setting-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-content-area {
+  width: 804px;
+  padding: 50px;
+  gap: 50px;
+  left: 318px;
+  background-color: #F9F9FA;
+}
+
+.width-1102 {
+  width: 1102px;
+}
+.width-1092 {
+  width: 1092px;
+}
+
+.settings-content-right {
+  width: 288px;
+  background-color: #F9F9FA;
+  left: 1142px;
+  padding: 16px;
+  gap: 30px;
+}
+
+.scroll-none {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Internet Explorer and Edge */
+}
+
+.scroll-none::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+.setting-menu-btn {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+}
+
+.setting-sidebar-btn {
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color 0.2s,
+    color 0.2s,
+    border-color 0.2s;
+  border-radius: 6px;
+  font-weight: 600;
+  color: #4b5563;
+}
+
+.setting-sidebar-btn:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.setting-menu-sub-btn {
+  display: block;
+  width: 100%;
+  padding: 9px 12px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.setting-menu-activebtn {
+  background: #111827;
+  color: #ffffff;
+}
+
+.setting-sidebar-btn.setting-menu-activebtn:hover {
+  background: #111827;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.setting-submenu {
+  margin-left: 14px;
+  border-left: 1px solid #e5e7eb;
+  padding-left: 10px;
+}
+
+.setting-submenu .setting-menu-activebtn {
+  background: #dbeafe;
+  color: #1e3a8a;
+}
+
+.color-black {
+  color: black;
+}

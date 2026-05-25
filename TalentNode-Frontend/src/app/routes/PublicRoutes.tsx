@@ -12,7 +12,7 @@ const PublicRoutes = () => {
         to={
           user?.organizationId
             ? `/organizations/${user.organizationId}/dashboard`
-            : '/organizations/create'
+            : '/organizations/new'
         }
         replace
       />

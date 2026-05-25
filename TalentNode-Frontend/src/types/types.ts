@@ -39,3 +39,51 @@ export type ApiErrorResponse = {
   message: string
   errors?: ApiFieldError[]
 }
+
+
+export interface LabelProp { //define the type of LabelProp
+  firstmenutext?: string;
+  secondmenutext?: string;
+  thirdmenutext?: string;
+  showFirstMenu?: boolean;
+  showSecondMenu?: boolean;
+  showThirdMenu?: boolean;
+  onFirstClick?: () => void;
+  onSecondClick?: () => void;
+  onThirdClick?: () => void;
+}
+
+export type Comment = {
+  _id: string;
+  text: string;
+  createdBy: string;
+  createdAt: string;
+};
+
+export type Application = {
+  _id: string;
+
+  candidateId: {
+    _id: string;
+    name: string;
+    email: string;
+  };
+
+  jobId: string;
+
+  organizationId: string;
+
+  comments: Comment[];
+
+  createdAt: string;
+
+  updatedAt: string;
+};
+
+export type GetCommentsResponse = {
+  success: boolean;
+
+  message: string;
+comments: Comment[];
+  applications: Application[];
+};

@@ -1,9 +1,10 @@
 import { useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../../app/store/AuthStore'
 
 const RegisterPage = () => {
   const navigate = useNavigate()
+  const location = useLocation()
   const register = useAuthStore((state) => state.register)
   const isLoading = useAuthStore((state) => state.isLoading)
   const error = useAuthStore((state) => state.error)
@@ -15,7 +16,8 @@ const RegisterPage = () => {
     event.preventDefault()
 
     await register(username, email, password)
-    navigate('/organizations/create')
+    const from = (location.state as { from?: { pathname?: string } } | null)?.from
+    navigate(from?.pathname ?? '/organizations/new')
   }
 
   return (
@@ -74,7 +76,11 @@ const RegisterPage = () => {
 
         <p className="mt-4 text-sm text-gray-600">
           Already have an account?{' '}
-          <Link to="/login" className="font-medium text-gray-900">
+          <Link
+            to="/login"
+            state={location.state}
+            className="font-medium text-gray-900"
+          >
             Login
           </Link>
         </p>
