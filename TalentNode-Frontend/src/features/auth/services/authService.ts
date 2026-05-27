@@ -6,6 +6,7 @@ import {
   loginUserSchema,
   profileResponseSchema,
   registerUserSchema,
+  updateProfileInputSchema,
   type AuthResponse,
   type CheckUserEmailInput,
   type CheckUserEmailResponse,
@@ -85,3 +86,22 @@ export const getUserProfile = async (
 
   return parseApiResponse(response, (data) => profileResponseSchema.parse(data))
 }
+
+export const updateUserProfile = async (
+  accessToken: string,
+  input: { username: string; email: string },
+): Promise<ProfileResponse> => {
+  const body = updateProfileInputSchema.parse(input)
+
+  const response = await fetch(`${API_BASE_URL}/users/profile`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(body),
+  })
+
+  return parseApiResponse(response, (data) => profileResponseSchema.parse(data))
+}
+

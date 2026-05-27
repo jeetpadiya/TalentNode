@@ -60,6 +60,11 @@ export const profileResponseSchema = z.object({
   user: userSchema,
 })
 
+export const updateProfileInputSchema = z.object({
+  username: z.string().trim().min(1),
+  email: emailSchema,
+})
+
 export const checkUserEmailResponseSchema = z.object({
   message: z.string(),
   exists: z.boolean(),

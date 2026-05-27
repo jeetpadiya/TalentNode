@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAuthStore } from '../store/AuthStore'
 import JobPopUp from '../../features/jobs/components/JobPopUp'
 import { CiSettings } from "react-icons/ci";
@@ -23,20 +23,21 @@ const Navbar = () => {
   const shouldHideMainNav =
     location.pathname === '/organizations' ||
     location.pathname === '/organizations/new'
-  const organizationIdFromPath = location.pathname.match(
-    /^\/organizations\/([^/]+)/,
-  )?.[1]
-  const currentOrganizationId =
-    organizationIdFromPath === 'create'
-      ? user?.organizationId
-      : organizationIdFromPath ?? user?.organizationId
-  const organizationBasePath = currentOrganizationId
-    ? `/organizations/${currentOrganizationId}`
-    : ''
+  const { organizationId } = useParams()
+
+  // When inside an organization workspace route, always use the URL org id.
+  const organizationBasePath =
+    organizationId && organizationId !== 'create'
+      ? `/organizations/${organizationId}`
+      : user?.organizationId
+        ? `/organizations/${user.organizationId}`
+        : ''
+
   const dashboardPath = organizationBasePath
     ? `${organizationBasePath}/dashboard`
     : '/dashboard'
   const canCreateJobs = user?.role === 'admin' || user?.role === 'recruiter'
+
 
   const handleLogout = () => {
     logout()
@@ -119,7 +120,18 @@ const Navbar = () => {
 
         <div className="flex items-center gap-3">
           {user ? (
-            <span className="text-sm text-gray-600">{user.username}</span>
+            <NavLink
+              to="/profile"
+              className={({ isActive }) =>
+                [
+                  'text-sm font-medium hover:text-gray-900',
+                  isActive ? 'text-gray-900' : 'text-gray-600',
+                ].join(' ')
+              }
+              title="View profile"
+            >
+              {user.username}
+            </NavLink>
           ) : null}
           <button
             type="button"

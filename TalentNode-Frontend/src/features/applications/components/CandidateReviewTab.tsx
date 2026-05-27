@@ -6,8 +6,10 @@ import {
   createPrivateNoteForApplication,
   getPrivateNotesByApplication,
 } from '../services/ApplicationPrivateNoteServices'
-
-
+import {
+  reviewTemplatesService,
+  type ReviewTemplate,
+} from '../../settings/services/reviewTemplatesService'
 
 type CandidateReviewTabProps = {
   jobId: string
@@ -17,17 +19,13 @@ type CandidateReviewTabProps = {
 type ReviewDraft = {
   rating: number | ''
   recommendation: 'strong_hire' | 'hire' | 'no_hire' | 'strong_no_hire' | ''
-  strengths: string
-  weaknesses: string
-  hiringDecisionNotes: string
+  reviewNotes: string
 }
 
 const defaultDraft: ReviewDraft = {
   rating: '',
   recommendation: '',
-  strengths: '',
-  weaknesses: '',
-  hiringDecisionNotes: '',
+  reviewNotes: '',
 }
 
 const CandidateReviewTab = ({ jobId, applicationId }: CandidateReviewTabProps) => {
@@ -63,13 +61,54 @@ const CandidateReviewTab = ({ jobId, applicationId }: CandidateReviewTabProps) =
     [accessToken, jobId, applicationId, canView],
   )
 
-  const [reviewRequests, setReviewRequests] = useState<
+  const [reviewRequests] = useState<
     Awaited<ReturnType<typeof getReviewRequests>>
   >([])
   const [existingText, setExistingText] = useState<string>('')
 
+  const [templates, setTemplates] = useState<ReviewTemplate[]>([])
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('')
+  const [loadingTemplates, setLoadingTemplates] = useState(false)
 
+  const userOrgId = useAuthStore((state) => state.user?.organizationId)
 
+  useEffect(() => {
+    if (!accessToken || !userOrgId || !canView) return
+
+    const fetchTemplates = async () => {
+      setLoadingTemplates(true)
+      try {
+        const data = await reviewTemplatesService.listReviewTemplates(
+          accessToken,
+          userOrgId as string,
+        )
+        setTemplates(data)
+      } catch (e) {
+        console.error('Failed to load review templates', e)
+      } finally {
+        setLoadingTemplates(false)
+      }
+    }
+
+    void fetchTemplates()
+  }, [accessToken, userOrgId, canView])
+
+  const handleTemplateChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const tId = e.target.value
+    setSelectedTemplateId(tId)
+
+    if (tId) {
+      const template = templates.find((t) => t._id === tId)
+      if (template) {
+        setDraft((prev) => ({
+          ...prev,
+          reviewNotes: prev.reviewNotes
+            ? prev.reviewNotes + '\n\n' + template.template
+            : template.template,
+        }))
+      }
+    }
+  }
 
   const formatReviewAsPrivateNote = (value: ReviewDraft) => {
     const ratingPart = value.rating === '' ? '' : `Rating: ${value.rating}/10\n`
@@ -77,22 +116,14 @@ const CandidateReviewTab = ({ jobId, applicationId }: CandidateReviewTabProps) =
       ? `Recommendation: ${value.recommendation.replace(/_/g, ' ')}\n`
       : ''
 
-    const strengthsPart = value.strengths.trim()
-      ? `Strengths: ${value.strengths.trim()}\n`
-      : ''
-    const weaknessesPart = value.weaknesses.trim()
-      ? `Weaknesses: ${value.weaknesses.trim()}\n`
-      : ''
-    const decisionNotesPart = value.hiringDecisionNotes.trim()
-      ? `Interview Notes / Decision Notes: ${value.hiringDecisionNotes.trim()}\n`
+    const notesPart = value.reviewNotes.trim()
+      ? `Review Notes:\n${value.reviewNotes.trim()}\n`
       : ''
 
     return [
       ratingPart,
       recPart,
-      strengthsPart,
-      weaknessesPart,
-      decisionNotesPart,
+      notesPart,
     ]
       .filter(Boolean)
       .join('')
@@ -240,8 +271,8 @@ const CandidateReviewTab = ({ jobId, applicationId }: CandidateReviewTabProps) =
 
 
       <div className="grid gap-4 md:grid-cols-2">
-        <label className="space-y-1">
-          <span className="text-sm font-semibold text-gray-900">Rating (0-10)</span>
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-semibold text-gray-900">Rating (0-10)</label>
           <input
             type="number"
             min={0}
@@ -256,12 +287,12 @@ const CandidateReviewTab = ({ jobId, applicationId }: CandidateReviewTabProps) =
                 rating: raw === '' ? '' : Number(raw),
               }))
             }}
-            className="h-10 rounded-md border border-gray-300 bg-white px-3 text-sm outline-none focus:border-gray-900 disabled:bg-gray-100"
+            className="h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm outline-none focus:border-gray-900 disabled:bg-gray-100"
           />
-        </label>
+        </div>
 
-        <label className="space-y-1">
-          <span className="text-sm font-semibold text-gray-900">Recommendation</span>
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-semibold text-gray-900">Recommendation</label>
           <select
             value={draft.recommendation}
             disabled={!canEdit}
@@ -271,7 +302,7 @@ const CandidateReviewTab = ({ jobId, applicationId }: CandidateReviewTabProps) =
                 recommendation: e.target.value as ReviewDraft['recommendation'],
               }))
             }
-            className="h-10 rounded-md border border-gray-300 bg-white px-3 text-sm outline-none focus:border-gray-900 disabled:bg-gray-100"
+            className="h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm outline-none focus:border-gray-900 disabled:bg-gray-100"
           >
             <option value="">Select</option>
             <option value="strong_hire">Strong Hire</option>
@@ -279,47 +310,40 @@ const CandidateReviewTab = ({ jobId, applicationId }: CandidateReviewTabProps) =
             <option value="no_hire">No Hire</option>
             <option value="strong_no_hire">Strong No Hire</option>
           </select>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <label className="text-sm font-semibold text-gray-900">
+          Insert Review Template
         </label>
+        <select
+          value={selectedTemplateId}
+          onChange={handleTemplateChange}
+          disabled={!canEdit || loadingTemplates}
+          className="h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm outline-none focus:border-gray-900 disabled:bg-gray-100"
+        >
+          <option value="">-- Select a template --</option>
+          {templates.map((t) => (
+            <option key={t._id} value={t._id}>
+              {t.name}
+            </option>
+          ))}
+        </select>
       </div>
 
       <label className="block space-y-1">
-        <span className="text-sm font-semibold text-gray-900">Strengths</span>
-        <textarea
-          value={draft.strengths}
-          disabled={!canEdit}
-          onChange={(e) =>
-            setDraft((p) => ({ ...p, strengths: e.target.value }))
-          }
-          placeholder="What went well in the interview?"
-          className="min-h-24 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-900 disabled:bg-gray-100"
-        />
-      </label>
-
-      <label className="block space-y-1">
-        <span className="text-sm font-semibold text-gray-900">Weaknesses</span>
-        <textarea
-          value={draft.weaknesses}
-          disabled={!canEdit}
-          onChange={(e) =>
-            setDraft((p) => ({ ...p, weaknesses: e.target.value }))
-          }
-          placeholder="Where did the candidate struggle?"
-          className="min-h-24 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-900 disabled:bg-gray-100"
-        />
-      </label>
-
-      <label className="block space-y-1">
         <span className="text-sm font-semibold text-gray-900">
-          Interview notes / decision notes
+          Review Notes
         </span>
         <textarea
-          value={draft.hiringDecisionNotes}
+          value={draft.reviewNotes}
           disabled={!canEdit}
           onChange={(e) =>
-            setDraft((p) => ({ ...p, hiringDecisionNotes: e.target.value }))
+            setDraft((p) => ({ ...p, reviewNotes: e.target.value }))
           }
-          placeholder="Technical interview, HR discussion, behavioral points, system design, culture fit, etc."
-          className="min-h-28 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-900 disabled:bg-gray-100"
+          placeholder="Insert a review template or write your interview notes here..."
+          className="min-h-[200px] w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-900 disabled:bg-gray-100"
         />
       </label>
 
@@ -327,7 +351,7 @@ const CandidateReviewTab = ({ jobId, applicationId }: CandidateReviewTabProps) =
         <button
           type="button"
           onClick={() => void handleSave()}
-          disabled={saving || !canEdit || !draft.strengths.trim() || !draft.hiringDecisionNotes.trim()}
+          disabled={saving || !canEdit || !draft.reviewNotes.trim()}
           className="rounded-md bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {saving ? 'Saving...' : 'Submit feedback'}

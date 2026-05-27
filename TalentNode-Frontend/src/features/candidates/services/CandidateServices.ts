@@ -160,3 +160,21 @@ export const editCandidate = async (
     return data.candidate
 }
 
+export const deleteCandidate = async (
+    candidateId: string,
+    accessToken: string,
+): Promise<{ success: boolean; message?: string }> => {
+    const response = await fetch(
+        `${API_BASE_URL}/candidates/${encodeURIComponent(candidateId)}`,
+        {
+            method: 'DELETE',
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+            },
+        },
+    )
+
+    return parseApiResponse(response, (value) =>
+        value as { success: boolean; message?: string },
+    )
+}

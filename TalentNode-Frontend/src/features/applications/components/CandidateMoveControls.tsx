@@ -22,12 +22,12 @@ const CandidateMoveControls = ({
 }: CandidateMoveControlsProps) => {
   return (
     <div className="flex flex-col gap-2">
-      <div className="p-0">
-        <div className="flex flex-wrap items-center justify-end gap-2">
+      <div className="py-2">
+        <div className="flex flex-wrap items-center justify-end gap-3">
           <select
             value={moveTargetStageId}
             onChange={(event) => onMoveTargetStageChange(event.target.value)}
-            className="h-9 rounded-md border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 outline-none hover:bg-gray-50 focus:border-gray-900"
+            className="h-10 w-56 rounded-md border border-gray-300 bg-white px-3 text-sm font-medium text-gray-900 outline-none hover:bg-gray-50 focus:border-gray-900 disabled:opacity-50"
             disabled={isMoving || stages.length <= 1}
             aria-label="Move candidate to stage"
           >
@@ -45,7 +45,7 @@ const CandidateMoveControls = ({
             type="button"
             onClick={onMoveCandidate}
             disabled={!moveTargetStageId || isMoving}
-            className="inline-flex h-9 items-center justify-center rounded-md bg-gray-900 px-4 text-sm font-semibold text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex h-10 items-center justify-center rounded-md bg-gray-900 px-6 text-sm font-semibold text-white shadow-sm hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isMoving ? 'Moving...' : 'Move'}
           </button>

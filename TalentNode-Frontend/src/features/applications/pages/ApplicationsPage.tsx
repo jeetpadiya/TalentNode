@@ -81,15 +81,19 @@ const ApplicationsPage = () => {
     if (!applicationId || stages.length === 0) return
 
     const stageWithApplication = stages.find((stage) =>
-      stage.candidates?.some((candidate) => candidate.applicationId === applicationId),
+      stage.candidates?.some(
+        (candidate) =>
+          candidate.applicationId === applicationId || candidate._id === applicationId,
+      ),
     )
 
     if (!stageWithApplication) return
 
     const candidate = stageWithApplication.candidates?.find(
-      (item) => item.applicationId === applicationId,
+      (item) => item.applicationId === applicationId || item._id === applicationId,
     )
     setSelectedCandidateId(candidate?._id ?? '')
+
     if (stageWithApplication.id !== activeStageId) {
       setActiveStageId(stageWithApplication.id)
     }
@@ -186,6 +190,27 @@ const ApplicationsPage = () => {
     }
   }
 
+  const handleCandidateDeleted = (candidateId: string) => {
+    setStages((currentStages) =>
+      currentStages.map((stage) => ({
+        ...stage,
+        candidates: stage.candidates.filter(
+          (candidate) => candidate._id !== candidateId,
+        ),
+      })),
+    )
+    setSelectedCandidateId('')
+    setMoveTargetStageId('')
+    setMoveError(null)
+
+    if (!organizationId) return
+
+    navigate({
+      pathname: `/organizations/${organizationId}/applications`,
+      search: searchParams.toString(),
+    })
+  }
+
   return (
     <div className="mx-auto max-w-6xl space-y-8 pb-16">
       <header className="space-y-2">
@@ -275,6 +300,7 @@ const ApplicationsPage = () => {
               moveError={moveError}
               onMoveTargetStageChange={setMoveTargetStageId}
               onMoveCandidate={handleMoveCandidate}
+              onCandidateDeleted={handleCandidateDeleted}
             />
           </div>
         </div>

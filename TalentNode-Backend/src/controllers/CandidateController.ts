@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { MongoServerError } from "mongodb";
 import mongoose from "mongoose";
 
+import CandidateApplicationModel from "../models/CandidateApplicationModel.js";
 import CandidateModel from "../models/CandidateModel.js";
 import JobCandidateAssignmentModel from "../models/JobCandidateAssignmentModel.js";
 import JobsModel from "../models/JobsModel.js";
@@ -297,12 +298,30 @@ const createCandidate = async (req: Request, res: Response) => {
                 const firstStageId =
                     orderedStages[0]?._id ?? undefined;
                 try {
-                    await JobCandidateAssignmentModel.create({
+                    const assignment = await JobCandidateAssignmentModel.create({
                         organizationId,
                         jobId: linkJobId,
                         candidateId: newCandidate._id,
                         hiringStageId: firstStageId,
                     });
+                    await CandidateApplicationModel.findOneAndUpdate(
+                        {
+                            jobId: linkJobId,
+                            candidateId: newCandidate._id,
+                            organizationId,
+                        },
+                        {
+                            $setOnInsert: {
+                                jobId: linkJobId,
+                                candidateId: newCandidate._id,
+                                organizationId,
+                            },
+                            $set: {
+                                applicationId: assignment._id,
+                            },
+                        },
+                        { upsert: true, new: true },
+                    );
                 } catch (assignErr: unknown) {
                     if (!(assignErr instanceof MongoServerError) || assignErr.code !== 11000) {
                         throw assignErr;
@@ -449,10 +468,72 @@ const updateCandidate = async (req: Request, res: Response) => {
     }
 };
 
+const deleteCandidate = async (req: Request, res: Response) => {
+    try {
+        const userId = req.user?.id;
+        if (!userId) {
+            return res.status(401).json({ success: false, message: "Unauthorized" });
+        }
+
+        const { id } = req.params;
+        if (!mongoose.isValidObjectId(id)) {
+            return res.status(400).json({ success: false, message: "Invalid candidate id" });
+        }
+
+        const user = await UserModel.findById(userId).select("organizationId");
+        const organizationId = user?.organizationId;
+        if (!organizationId) {
+            return res.status(400).json({
+                success: false,
+                message: "Organization is required to delete a candidate",
+            });
+        }
+
+        if (!(await canManageOrganizationRecruitingData(userId, String(organizationId)))) {
+            return res.status(403).json({
+                success: false,
+                message: "Only admins and recruiters can delete candidates",
+            });
+        }
+
+        const candidate = await CandidateModel.findOne({ _id: id, organizationId }).select("_id");
+        if (!candidate) {
+            return res.status(404).json({ success: false, message: "Candidate not found" });
+        }
+
+        const [assignmentsResult, applicationsResult] = await Promise.all([
+            JobCandidateAssignmentModel.deleteMany({
+                organizationId,
+                candidateId: id,
+            }),
+            CandidateApplicationModel.deleteMany({
+                organizationId,
+                candidateId: id,
+            }),
+        ]);
+
+        await CandidateModel.deleteOne({ _id: id, organizationId });
+
+        return res.status(200).json({
+            success: true,
+            message: "Candidate deleted successfully",
+            deleted: {
+                candidateId: id,
+                assignments: assignmentsResult.deletedCount,
+                applications: applicationsResult.deletedCount,
+            },
+        });
+    } catch (error) {
+        console.error("Error deleting candidate:", error);
+        return res.status(500).json({ success: false, message: "Server error" });
+    }
+};
+
 export {
     getCandidates,
     getCandidatesForJob,
     getCandidateById,
     createCandidate,
     updateCandidate,
+    deleteCandidate,
 };

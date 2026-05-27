@@ -1,15 +1,23 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuthStore } from '../../../app/store/AuthStore'
-import { getJobById, updateJob } from '../services/JobServices'
+import { getJobById, updateJob, updateJobPublish } from '../services/JobServices'
 import type { Job } from '../services/JobSchema'
 import JobSetupForm from './JobSetupForm'
 import JobSetupHeader from './JobSetupHeader'
 import JobWorkspaceTabs from './JobWorkspaceTabs'
+import { jobCategoriesService } from '../../settings/services/jobCategoriesService'
+import type { JobCategory } from '../../settings/services/jobCategoriesService'
 import {
   joinList,
   splitList,
 } from './jobSetupUtils'
+import {
+  deriveDepartmentSelection,
+  serializeDepartmentForBackend,
+} from './JobSetupDepartmentMapper'
+
+
 
 const JobSetup = () => {
   const { organizationId, jobId } = useParams()
@@ -17,7 +25,10 @@ const JobSetup = () => {
   const navigate = useNavigate()
   const [job, setJob] = useState<Job | null>(null)
   const [title, setTitle] = useState('')
-  const [department, setDepartment] = useState('')
+  const [jobCategory, setJobCategory] = useState('')
+  const [jobCategories, setJobCategories] = useState<JobCategory[]>([])
+  const [jobCategoriesLoading, setJobCategoriesLoading] = useState(true)
+
   const [location, setLocation] = useState('')
   const [workMode, setWorkMode] = useState<Job['workMode']>('onsite')
   const [employmentType, setEmploymentType] =
@@ -38,7 +49,44 @@ const JobSetup = () => {
   const [applicationDeadline, setApplicationDeadline] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isTogglingPublish, setIsTogglingPublish] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let isMounted = true
+
+    const loadJobCategories = async () => {
+      if (!accessToken || !organizationId) {
+        setJobCategories([])
+        setJobCategoriesLoading(false)
+        return
+      }
+
+      try {
+        const categories = await jobCategoriesService.listJobCategories(
+          accessToken,
+          organizationId,
+        )
+        if (isMounted) {
+          setJobCategories(categories)
+        }
+      } catch {
+        if (isMounted) {
+          setJobCategories([])
+        }
+      } finally {
+        if (isMounted) {
+          setJobCategoriesLoading(false)
+        }
+      }
+    }
+
+    void loadJobCategories()
+
+    return () => {
+      isMounted = false
+    }
+  }, [accessToken, organizationId])
 
   useEffect(() => {
     let isMounted = true
@@ -56,7 +104,13 @@ const JobSetup = () => {
         if (isMounted) {
           setJob(response)
           setTitle(response.title)
-          setDepartment(response.department ?? '')
+          const selection = deriveDepartmentSelection(
+            jobCategories,
+            response.department,
+          )
+          setJobCategory(selection.categoryId)
+
+
           setLocation(response.location ?? '')
           setWorkMode(response.workMode)
           setEmploymentType(response.employmentType)
@@ -108,6 +162,7 @@ const JobSetup = () => {
     }
   }, [accessToken, jobId])
 
+
   const handleAddCandidate = () => {
     if (!organizationId) return
 
@@ -120,6 +175,25 @@ const JobSetup = () => {
 
   const handleCancel = () => {
     navigate(`/organizations/${organizationId}/jobs`)
+  }
+
+  const handleTogglePublish = async () => {
+    if (!accessToken || !jobId || !job) return
+    setIsTogglingPublish(true)
+    setError(null)
+    try {
+      const updated = await updateJobPublish(jobId, !job.isPublished, accessToken)
+      setJob(updated)
+      setStatus(updated.status)
+    } catch (caughtError) {
+      const message =
+        typeof caughtError === 'object' && caughtError !== null && 'message' in caughtError
+          ? String(caughtError.message)
+          : 'Could not update publish status.'
+      setError(message)
+    } finally {
+      setIsTogglingPublish(false)
+    }
   }
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -138,7 +212,21 @@ const JobSetup = () => {
         jobId,
         {
           title,
-          department: department || undefined,
+          department:
+            jobCategory
+              ? (() => {
+                  // jobCategory state is the value stored in JobsModel.department.
+                  // Ensure we serialize it back into the stable backend format.
+                  const selection = deriveDepartmentSelection(
+                    jobCategories,
+                    jobCategory,
+                  )
+
+                  return serializeDepartmentForBackend(selection)
+                })() ?? undefined
+              : undefined,
+
+
           location: location || undefined,
           workMode,
           employmentType,
@@ -168,7 +256,8 @@ const JobSetup = () => {
         accessToken,
       )
 
-      navigate(`/organizations/${organizationId}/jobs`)
+      // Stay on the same job setup page after saving.
+      // Optionally, you could refetch job data here if needed.
     } catch (caughtError) {
       const message =
         typeof caughtError === 'object' &&
@@ -195,8 +284,12 @@ const JobSetup = () => {
     <section className="mx-auto max-w-4xl">
       <JobSetupHeader
         title={title}
+        isPublished={job?.isPublished ?? false}
+        status={status}
+        isTogglingPublish={isTogglingPublish}
         canAddCandidate={Boolean(organizationId)}
         onAddCandidate={handleAddCandidate}
+        onTogglePublish={handleTogglePublish}
       />
 
       <JobWorkspaceTabs />
@@ -204,10 +297,13 @@ const JobSetup = () => {
       <JobSetupForm
         title={title}
         setTitle={setTitle}
-        department={department}
-        setDepartment={setDepartment}
+        department={jobCategory}
+        setDepartment={setJobCategory}
+        categories={jobCategories}
+        departmentDisabled={jobCategoriesLoading}
         location={location}
         setLocation={setLocation}
+
         workMode={workMode}
         setWorkMode={setWorkMode}
         employmentType={employmentType}

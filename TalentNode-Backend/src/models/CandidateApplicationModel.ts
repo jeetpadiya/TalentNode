@@ -2,6 +2,12 @@ import mongoose from "mongoose";
 
 const candidateApplicationSchema = new mongoose.Schema(
   {
+    applicationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "JobCandidateAssignment",
+      required: false,
+    },
+
     jobId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Job",
@@ -61,6 +67,28 @@ const candidateApplicationSchema = new mongoose.Schema(
       },
     ],
 
+    emails: [
+      {
+        subject: {
+          type: String,
+          required: true,
+        },
+        body: {
+          type: String,
+          required: true,
+        },
+        sentBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+          required: true,
+        },
+        createdAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
+
     reviewRequests: [
       {
         assigneeUserId: {
@@ -92,10 +120,31 @@ const candidateApplicationSchema = new mongoose.Schema(
         },
       },
     ],
+
+    customQuestionAnswers: [
+      {
+        key: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+        answer: {
+          type: mongoose.Schema.Types.Mixed,
+        },
+      },
+    ],
   },
   {
     timestamps: true,
   }
+);
+
+candidateApplicationSchema.index(
+  { applicationId: 1 },
+  { unique: true, sparse: true },
+);
+candidateApplicationSchema.index(
+  { organizationId: 1, jobId: 1, candidateId: 1 },
 );
 
 const CandidateApplicationModel = mongoose.model(

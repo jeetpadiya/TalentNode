@@ -26,6 +26,15 @@ const assignmentSchema = new mongoose.Schema(
             ref: "Candidate",
             required: true,
         },
+        status: {
+            type: String,
+            enum: ['active', 'hired', 'rejected', 'withdrawn'],
+            default: 'active',
+        },
+        rejectionReason: {
+            type: String,
+            required: false,
+        }
     },
     { timestamps: true },
 );

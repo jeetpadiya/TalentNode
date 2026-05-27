@@ -48,3 +48,30 @@ export const sendOrganizationInviteEmail = async (
     ].join('\n\n'),
   })
 }
+
+export type CandidateEmailParams = {
+  to: string
+  subject: string
+  htmlBody: string
+}
+
+export const sendCandidateEmail = async (params: CandidateEmailParams) => {
+  const { to, subject, htmlBody } = params
+
+  const transporter = nodemailer.createTransport({
+    host: getRequiredEnv('SMTP_HOST'),
+    port: Number(process.env.SMTP_PORT ?? 587),
+    secure: process.env.SMTP_SECURE === 'true',
+    auth: {
+      user: getRequiredEnv('SMTP_USER'),
+      pass: getRequiredEnv('SMTP_PASS'),
+    },
+  })
+
+  await transporter.sendMail({
+    from: process.env.SMTP_FROM ?? process.env.SMTP_USER,
+    to,
+    subject,
+    html: htmlBody,
+  })
+}

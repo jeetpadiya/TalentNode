@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { Job } from '../services/JobSchema'
-import type { ApplicationFormData } from '../services/ApplicationFormServices'
+import type { ApplicationFormData, CustomQuestion } from '../services/ApplicationFormServices'
 import CustomQuestionPopUp from '../PopUp/CustomQuestionPopUp'
 
-import { getApplicationForm, UpdateApplicationForm } from '../services/ApplicationFormServices'
+import { createCustomQuestion, deleteCustomQuestion, getApplicationForm, UpdateApplicationForm, updateCustomQuestion } from '../services/ApplicationFormServices'
 import { useAuthStore } from '../../../app/store/AuthStore'
 
 type FieldVisibility = "Required" | "Optional" | "Hidden"
@@ -37,6 +37,7 @@ const ApplicationForm = ({
   const accessToken = useAuthStore((state) => state.accessToken)
 
   const [isCustomQuestionPopOpen, setIsCustomQuestionPopOpen] = useState(false)
+  const [editingQuestion, setEditingQuestion] = useState<CustomQuestion | null>(null)
 
 
 
@@ -200,6 +201,64 @@ const ApplicationForm = ({
     }
   }
 
+  const handleSubmitCustomQuestion = async (
+    question: NonNullable<ApplicationFormData['customQuestions']>[number],
+  ) => {
+    try {
+      setLoading(true)
+      if (!accessToken) {
+        return alert('user not authenticated')
+      }
+
+      const data = editingQuestion
+        ? await updateCustomQuestion(job.id, editingQuestion.key, question, accessToken)
+        : await createCustomQuestion(job.id, question, accessToken)
+      setFormConfig(data)
+      setEditingQuestion(null)
+      setIsCustomQuestionPopOpen(false)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not create custom question'
+      alert(message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleOpenCreateQuestion = () => {
+    setEditingQuestion(null)
+    setIsCustomQuestionPopOpen(true)
+  }
+
+  const handleOpenEditQuestion = (question: CustomQuestion) => {
+    setEditingQuestion(question)
+    setIsCustomQuestionPopOpen(true)
+  }
+
+  const handleCloseQuestionPopup = () => {
+    setEditingQuestion(null)
+    setIsCustomQuestionPopOpen(false)
+  }
+
+  const handleDeleteCustomQuestion = async (question: CustomQuestion) => {
+    if (!accessToken) {
+      return alert('user not authenticated')
+    }
+
+    const shouldDelete = window.confirm(`Delete "${question.question}"?`)
+    if (!shouldDelete) return
+
+    try {
+      setLoading(true)
+      const data = await deleteCustomQuestion(job.id, question.key, accessToken)
+      setFormConfig(data)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not delete custom question'
+      alert(message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   if (loading) {
     return (
       <p className="text-sm text-gray-500">
@@ -347,12 +406,49 @@ const ApplicationForm = ({
           Custom fields
         </h3>
         <div className="flex flex-col space-y-4">
-          <div className="mt-5 rounded-md border border-dashed border-gray-300 p-5 text-center text-sm text-gray-500">
-            Custom questions are currently loaded via the backend as
-            <span className="font-medium"> customQuestions[]</span>.
-            This UI will be updated to support editing that array.
-          </div>
-          <button className="w-fit rounded-md bg-black px-5 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800" onClick={() => setIsCustomQuestionPopOpen(true)}>
+          {formConfig.customQuestions.length > 0 ? (
+            <div className="mt-5 divide-y divide-gray-100 rounded-md border border-gray-200">
+              {formConfig.customQuestions.map((item) => (
+                <div key={item.key} className="flex items-start justify-between gap-4 p-4">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{item.question}</p>
+                    <p className="mt-1 text-xs text-gray-500">
+                      {item.fieldType} · {item.required ? 'Required' : 'Optional'}
+                    </p>
+                    {item.options.length > 0 ? (
+                      <p className="mt-1 text-xs text-gray-500">
+                        Options: {item.options.join(', ')}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700">
+                      {item.key}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEditQuestion(item)}
+                      className="rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteCustomQuestion(item)}
+                      className="rounded-md border border-red-200 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-5 rounded-md border border-dashed border-gray-300 p-5 text-center text-sm text-gray-500">
+              No custom questions yet.
+            </div>
+          )}
+          <button className="w-fit rounded-md bg-black px-5 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800" onClick={handleOpenCreateQuestion}>
             Add Question
           </button>
         </div>
@@ -364,7 +460,11 @@ const ApplicationForm = ({
           Save changes
         </button>
       </div>
-      <CustomQuestionPopUp isOpen={isCustomQuestionPopOpen} isClose={() => setIsCustomQuestionPopOpen(false)} onCreate={() => {}}
+      <CustomQuestionPopUp
+        isOpen={isCustomQuestionPopOpen}
+        isClose={handleCloseQuestionPopup}
+        onSubmit={handleSubmitCustomQuestion}
+        initialQuestion={editingQuestion}
       />
     </section>
   )

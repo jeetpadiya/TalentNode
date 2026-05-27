@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 
 import { useAuthStore } from '../../../app/store/AuthStore'
 import type { Candidate } from '../../candidates/services/CandidateSchema'
+import { deleteCandidate } from '../../candidates/services/CandidateServices'
 
 import CandidateHeader from './CandidateHeader'
 import RequestReviewModal from './RequestReviewModal'
@@ -9,6 +10,7 @@ import CandidateInfoGrid from './CandidateInfoGrid'
 import CandidateMoveControls from './CandidateMoveControls'
 import CandidateTabs, { type CandidateDetailTab } from './CandidateTabs'
 import EditCandidateModal from './EditCandidateModal'
+import ResolveCandidateModal from './ResolveCandidateModal'
 
 type CandidateDetailsProps = {
   candidate: Candidate | null
@@ -21,6 +23,7 @@ type CandidateDetailsProps = {
   moveError?: string | null
   onMoveTargetStageChange: (stageId: string) => void
   onMoveCandidate: () => void
+  onCandidateDeleted?: (candidateId: string) => void
 }
 
 const CandidateDetails = ({
@@ -34,11 +37,16 @@ const CandidateDetails = ({
   moveError,
   onMoveTargetStageChange,
   onMoveCandidate,
+  onCandidateDeleted,
 }: CandidateDetailsProps) => {
   const role = useAuthStore((s) => s.user?.role)
+  const accessToken = useAuthStore((s) => s.accessToken)
   const [activeTab, setActiveTab] = useState<CandidateDetailTab>('notes')
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isRequestReviewOpen, setIsRequestReviewOpen] = useState(false)
+  const [isResolveModalOpen, setIsResolveModalOpen] = useState(false)
+  const [isDeletingCandidate, setIsDeletingCandidate] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   const canRequestReview = useMemo(
     () =>
@@ -47,6 +55,7 @@ const CandidateDetails = ({
       role === 'hiring_manager',
     [role],
   )
+  const canDeleteCandidate = role === 'admin' || role === 'recruiter'
 
   const jobId = candidate?.jobId ?? jobIdFromPage
   const applicationId = candidate?.applicationId ?? undefined
@@ -67,8 +76,30 @@ const CandidateDetails = ({
     setIsEditModalOpen(true)
   }
 
-  const handleDeleteCandidate = () => {
-    // TODO: Call delete candidate API when the backend endpoint is ready.
+  const handleDeleteCandidate = async () => {
+    if (!accessToken || isDeletingCandidate) return
+
+    const shouldDelete = window.confirm(
+      `Delete ${candidate.name}? This will remove the candidate and their application activity from your organization.`,
+    )
+
+    if (!shouldDelete) return
+
+    setIsDeletingCandidate(true)
+    setDeleteError(null)
+
+    try {
+      await deleteCandidate(candidate._id, accessToken)
+      onCandidateDeleted?.(candidate._id)
+    } catch (error) {
+      setDeleteError(
+        typeof error === 'object' && error !== null && 'message' in error
+          ? String((error as { message?: unknown }).message)
+          : 'Could not delete candidate.',
+      )
+    } finally {
+      setIsDeletingCandidate(false)
+    }
   }
 
   const handleCloseEditModal = () => {
@@ -93,6 +124,19 @@ const CandidateDetails = ({
         />
       ) : null}
 
+      {isResolveModalOpen && jobId && applicationId && candidate ? (
+        <ResolveCandidateModal
+          jobId={jobId}
+          applicationId={applicationId}
+          candidateName={candidate.name}
+          onClose={() => setIsResolveModalOpen(false)}
+          onResolved={() => {
+            setIsResolveModalOpen(false);
+            window.location.reload(); // Quick refresh to clear pipeline
+          }}
+        />
+      ) : null}
+
       {isEditModalOpen ? null : (
         <>
           <CandidateHeader
@@ -101,10 +145,24 @@ const CandidateDetails = ({
             canRequestReview={
               canRequestReview && Boolean(jobId && applicationId)
             }
+            canDelete={canDeleteCandidate}
             onEdit={handleEditCandidate}
             onDelete={handleDeleteCandidate}
             onRequestReview={() => setIsRequestReviewOpen(true)}
+            onResolve={() => setIsResolveModalOpen(true)}
           />
+
+          {deleteError ? (
+            <p className="mx-6 mt-4 rounded-lg border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-800">
+              {deleteError}
+            </p>
+          ) : null}
+
+          {isDeletingCandidate ? (
+            <p className="mx-6 mt-4 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+              Deleting candidate...
+            </p>
+          ) : null}
 
           <div className="px-6 -mt-1">
             <CandidateMoveControls
@@ -124,7 +182,7 @@ const CandidateDetails = ({
             activeTab={activeTab}
             onTabChange={setActiveTab}
             candidate={{
-              jobId: candidate.jobId ?? candidate.hiringStageId ?? undefined,
+              jobId: candidate.jobId ?? jobIdFromPage,
               applicationId: candidate.applicationId ?? undefined,
               resume: candidate.resume,
             }}
@@ -136,4 +194,3 @@ const CandidateDetails = ({
 }
 
 export default CandidateDetails
-

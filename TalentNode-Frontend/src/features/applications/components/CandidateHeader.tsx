@@ -13,18 +13,22 @@ type CandidateHeaderProps = {
   candidate: Candidate
   stageName?: string
   canRequestReview?: boolean
+  canDelete?: boolean
   onEdit: () => void
   onDelete: () => void
   onRequestReview: () => void
+  onResolve: () => void
 }
 
 const CandidateHeader = ({
   candidate,
   stageName,
   canRequestReview = false,
+  canDelete = false,
   onEdit,
   onDelete,
   onRequestReview,
+  onResolve,
 }: CandidateHeaderProps) => {
   const [isActionMenuOpen, setIsActionMenuOpen] = useState(false)
   const actionMenuRef = useRef<HTMLDivElement | null>(null)
@@ -88,6 +92,7 @@ const CandidateHeader = ({
                   <ThreeDotPopUp
                     onFirstClick={onEdit}
                     onSecondClick={onDelete}
+                    showSecondMenu={canDelete}
                   />
                 </div>
               ) : null}
@@ -119,6 +124,13 @@ const CandidateHeader = ({
         <div className="flex flex-wrap items-center justify-end gap-2">
           <button
             type="button"
+            onClick={onResolve}
+            className="inline-flex items-center justify-center gap-2 rounded-md bg-white border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+          >
+            Resolve
+          </button>
+          <button
+            type="button"
             onClick={onRequestReview}
             disabled={!canRequestReview}
             className="inline-flex items-center justify-center gap-2 rounded-md bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
@@ -133,4 +145,3 @@ const CandidateHeader = ({
 }
 
 export default CandidateHeader
-

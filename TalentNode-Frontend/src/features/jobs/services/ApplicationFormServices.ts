@@ -40,7 +40,11 @@ console.log(
         },
     });
 
-    return parseApiResponse(response, (data) => applicationFormSchema.parse(data));
+    return parseApiResponse(response, (data) =>
+      applicationFormSchema.parse(
+        (data as { applicationForm: unknown }).applicationForm,
+      ),
+    );
 
 }
 
@@ -74,6 +78,75 @@ return parseApiResponse(
 );
 };
 
+export const createCustomQuestion = async (
+  jobId: string,
+  question: CustomQuestion,
+  accessToken: string,
+) => {
+  const response = await fetch(
+    `${API_BASE_URL}/jobs/${jobId}/application-form/custom-questions`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(question),
+    },
+  );
 
+  return parseApiResponse(response, (data) =>
+    applicationFormSchema.parse(
+      (data as { applicationForm: unknown }).applicationForm,
+    ),
+  );
+};
+
+export const updateCustomQuestion = async (
+  jobId: string,
+  questionKey: string,
+  question: CustomQuestion,
+  accessToken: string,
+) => {
+  const response = await fetch(
+    `${API_BASE_URL}/jobs/${jobId}/application-form/custom-questions/${encodeURIComponent(questionKey)}`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(question),
+    },
+  );
+
+  return parseApiResponse(response, (data) =>
+    applicationFormSchema.parse(
+      (data as { applicationForm: unknown }).applicationForm,
+    ),
+  );
+};
+
+export const deleteCustomQuestion = async (
+  jobId: string,
+  questionKey: string,
+  accessToken: string,
+) => {
+  const response = await fetch(
+    `${API_BASE_URL}/jobs/${jobId}/application-form/custom-questions/${encodeURIComponent(questionKey)}`,
+    {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    },
+  );
+
+  return parseApiResponse(response, (data) =>
+    applicationFormSchema.parse(
+      (data as { applicationForm: unknown }).applicationForm,
+    ),
+  );
+};
 
 

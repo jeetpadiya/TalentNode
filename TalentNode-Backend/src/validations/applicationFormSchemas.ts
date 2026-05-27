@@ -22,7 +22,7 @@ const applicationFieldSchema = z.object({
   visibility: visibilitySchema,
 });
 
-const customQuestionSchema = z.object({
+export const customQuestionSchema = z.object({
   key: z.string().trim().min(1),
 
   question: z.string().trim().min(1),

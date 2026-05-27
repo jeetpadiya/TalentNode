@@ -1,11 +1,13 @@
 import { Request, Response } from 'express';
+import mongoose from 'mongoose';
 import CandidateModel from '../models/CandidateModel.js';
-import CandidateApplicationModel from '../models/CandidateApplicationModel.js';
 import JobCandidateAssignmentModel from '../models/JobCandidateAssignmentModel.js';
 import {
   getAccessibleJobFilterForUser,
   getAuthUserId,
   getOrganizationIdFromUserId,
+  ensureCandidateApplicationForAssignment,
+  findCandidateApplicationForAssignment,
   parseObjectId,
   requireJobAssignedToInterviewerOr403,
 } from './helpers/controllerUtils.js';
@@ -89,32 +91,19 @@ const CreatePrivateNote = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: 'Candidate not found' });
     }
 
-    const application = await CandidateApplicationModel.findOneAndUpdate(
-      { jobId, candidateId, organizationId },
-      {
-        $push: {
-          PrivateNote: {
-            text: privatenote,
-            createdBy: userId,
-            createdAt: new Date(),
-          },
-        },
-      },
-      {
-        new: true,
-        upsert: false,
-      },
-    );
+    const application = await ensureCandidateApplicationForAssignment({
+      applicationId,
+      jobId,
+      candidateId,
+      organizationId,
+    });
 
-    // If the application document doesn't exist yet, treat it as an idempotent no-op
-    // to avoid breaking business logic with a 404.
-    if (!application) {
-      return res.status(200).json({
-        success: true,
-        message: 'Private note added successfully',
-        application: null,
-      });
-    }
+    application.PrivateNote.push({
+      text: privatenote,
+      createdBy: new mongoose.Types.ObjectId(userId),
+      createdAt: new Date(),
+    });
+    await application.save();
 
     return res.status(200).json({
       success: true,
@@ -165,17 +154,19 @@ const GetPrivateNoteById = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: 'Application not found' });
     }
 
-    const application = await CandidateApplicationModel.findOne({
+    const application = await findCandidateApplicationForAssignment({
+      applicationId,
       jobId,
       candidateId: assignment.candidateId,
       organizationId,
-    })
-      .populate('candidateId', 'name email')
-      .populate('PrivateNote.createdBy', 'username email');
+    });
 
     if (!application) {
       return res.status(404).json({ success: false, message: 'Candidate application not found' });
     }
+
+    await application.populate('candidateId', 'name email');
+    await application.populate('PrivateNote.createdBy', 'username email');
 
     return res.status(200).json({
       success: true,

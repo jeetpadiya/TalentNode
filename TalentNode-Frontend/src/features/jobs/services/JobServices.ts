@@ -104,3 +104,44 @@ export const updateJob = async (
 
   return data.job
 }
+
+export const updateJobStatus = async (
+  jobId: string,
+  status: Job['status'],
+  accessToken: string,
+): Promise<Job> => {
+  const response = await fetch(`${API_BASE_URL}/jobs/${jobId}/status`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ status }),
+  })
+
+  const data = await parseApiResponse(response, (value) =>
+    jobResponseSchema.parse(value),
+  )
+
+  return data.job
+}
+export const updateJobPublish = async (
+  jobId: string,
+  isPublished: boolean,
+  accessToken: string,
+): Promise<Job> => {
+  const response = await fetch(`${API_BASE_URL}/jobs/${jobId}/publish`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ isPublished }),
+  })
+
+  const data = await parseApiResponse(response, (value) =>
+    jobResponseSchema.parse(value),
+  )
+
+  return data.job
+}

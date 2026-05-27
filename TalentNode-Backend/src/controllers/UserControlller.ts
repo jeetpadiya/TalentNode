@@ -196,4 +196,62 @@ const checkUserEmail = async (
     }
 };
 
-export { registerUser, loginUser, getUserProfile, checkUserEmail };
+const updateUserProfile = async (req: Request, res: Response) => {
+    try {
+        if (!req.user?.id) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
+
+        const { username, email } = req.body as {
+            username?: string;
+            email?: string;
+        };
+
+        // Minimal validation (consistent with existing style)
+        if (typeof username !== 'string' || username.trim().length < 1) {
+            return res.status(400).json({ message: "Username is required" });
+        }
+        if (typeof email !== 'string' || email.trim().length < 1) {
+            return res.status(400).json({ message: "Email is required" });
+        }
+
+        const normalizedEmail = email.trim().toLowerCase();
+        const normalizedUsername = username.trim();
+
+        const existingUser = await UserModel.findById(req.user.id);
+        if (!existingUser) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        // If email changes, ensure uniqueness
+        if (existingUser.email !== normalizedEmail) {
+            const emailOwner = await UserModel.findOne({ email: normalizedEmail }).select("_id");
+            if (emailOwner) {
+                return res.status(400).json({ message: "User with this email already exists" });
+            }
+        }
+
+        existingUser.username = normalizedUsername;
+        existingUser.email = normalizedEmail;
+
+        await existingUser.save();
+
+        return res.status(200).json({
+            message: "User profile updated successfully",
+            user: {
+                id: existingUser._id,
+                username: existingUser.username,
+                email: existingUser.email,
+                role: existingUser.role,
+                organizationId: existingUser.organizationId ?? null,
+                createdAt: existingUser.createdAt,
+                updatedAt: existingUser.updatedAt,
+            },
+        });
+    } catch (error: unknown) {
+        console.error("Error updating user profile:", error);
+        return res.status(500).json({ message: "Server error" });
+    }
+};
+
+export { registerUser, loginUser, getUserProfile, checkUserEmail, updateUserProfile };

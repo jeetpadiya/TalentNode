@@ -89,6 +89,38 @@ export const moveApplicationToHiringStage = async (
   )
 }
 
+export const resolveApplication = async ({
+  jobId,
+  applicationId,
+  status,
+  rejectionReason,
+  sendEmail,
+  accessToken,
+}: {
+  jobId: string;
+  applicationId: string;
+  status: 'hired' | 'rejected' | 'withdrawn' | 'active';
+  rejectionReason?: string;
+  sendEmail?: boolean;
+  accessToken: string;
+}) => {
+  const response = await fetch(
+    `${API_BASE_URL}/jobs/${encodeURIComponent(jobId)}/applications/${encodeURIComponent(applicationId)}/resolve`,
+    {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ status, rejectionReason, sendEmail }),
+    },
+  )
+
+  return parseApiResponse(response, (value) =>
+    value as { success: boolean; message: string; assignment: any }
+  )
+}
+
 export const addApplicationComment = async ({
   jobId,
   applicationId,
@@ -195,3 +227,46 @@ export const deleteApplicationComment = async ({
 }
 
 
+export const sendCandidateEmail = async ({
+  jobId,
+  applicationId,
+  subject,
+  body,
+  accessToken,
+}: {
+  jobId: string;
+  applicationId: string;
+  subject: string;
+  body: string;
+  accessToken: string;
+}) => {
+  const response = await fetch(
+    `${API_BASE_URL}/jobs/${encodeURIComponent(jobId)}/applications/${encodeURIComponent(applicationId)}/emails`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ subject, body }),
+    },
+  )
+  return parseApiResponse(response, (value) => value as { success: boolean; emailLog: any })
+}
+
+export const getCandidateEmails = async (
+  jobId: string,
+  applicationId: string,
+  accessToken: string,
+) => {
+  const response = await fetch(
+    `${API_BASE_URL}/jobs/${encodeURIComponent(jobId)}/applications/${encodeURIComponent(applicationId)}/emails`,
+    {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    },
+  )
+  return parseApiResponse(response, (value) => value as { success: boolean; emails: any[] })
+}

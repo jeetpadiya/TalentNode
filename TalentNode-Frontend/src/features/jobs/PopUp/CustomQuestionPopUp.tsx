@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
 import type { CustomQuestion } from "../services/ApplicationFormServices";
 
@@ -7,7 +7,8 @@ type FieldType = "text" | "textarea" | "select" | "checkbox" | "radio";
 type CustomQuestionPopUpProps = {
   isOpen: boolean;
   isClose: () => void;
-  onCreate: (question: Omit<CustomQuestion, "options"> & { options: string[] }) => void | Promise<void>;
+  onSubmit: (question: Omit<CustomQuestion, "options"> & { options: string[] }) => void | Promise<void>;
+  initialQuestion?: CustomQuestion | null;
   initialKey?: string;
 };
 
@@ -23,7 +24,8 @@ const normalizeKey = (s: string) => {
 const CustomQuestionPopUp = ({
   isOpen,
   isClose,
-  onCreate,
+  onSubmit,
+  initialQuestion,
   initialKey,
 }: CustomQuestionPopUpProps) => {
   const [questionText, setQuestionText] = useState("");
@@ -39,12 +41,22 @@ const CustomQuestionPopUp = ({
 
   const derivedKey = useMemo(() => {
     const fromText = normalizeKey(questionText);
-    return (initialKey ?? fromText) || "custom_question";
-  }, [initialKey, questionText]);
+    return (initialQuestion?.key ?? initialKey ?? fromText) || "custom_question";
+  }, [initialKey, initialQuestion?.key, questionText]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    setQuestionText(initialQuestion?.question ?? "");
+    setQuestionType((initialQuestion?.fieldType as FieldType | undefined) ?? "text");
+    setQuestionRequirement(initialQuestion?.required === false ? "Optional" : "Required");
+    setOptionsText((initialQuestion?.options ?? []).join("\n"));
+    setAnswerVisibility("Entire hiring team");
+  }, [initialQuestion, isOpen]);
 
   if (!isOpen) return null;
 
-  const handleCreate = async () => {
+  const handleSubmit = async () => {
     const question = questionText.trim();
     if (!question) {
       alert("Question text is required");
@@ -68,7 +80,7 @@ const CustomQuestionPopUp = ({
 
     // NOTE: backend schema currently does not persist answerVisibility.
     // We keep the field in UI but do not store it.
-    await onCreate({
+    await onSubmit({
       key,
       question,
       fieldType: questionType,
@@ -91,7 +103,7 @@ const CustomQuestionPopUp = ({
         <div className="flex items-start justify-between border-b border-gray-200 px-6 py-5">
           <div>
             <h2 className="text-xl font-semibold text-gray-900">
-              New custom question
+              {initialQuestion ? "Edit custom question" : "New custom question"}
             </h2>
 
             <p className="mt-1 text-sm text-gray-500">
@@ -146,7 +158,6 @@ const CustomQuestionPopUp = ({
               <option value="radio">Multiple choice (single select)</option>
               <option value="checkbox">Multiple choice (multi select)</option>
               <option value="select">Multiple choice (single select)</option>
-              <option value="file">File upload</option>
             </select>
           </div>
 
@@ -216,10 +227,10 @@ const CustomQuestionPopUp = ({
           </button>
 
           <button
-            onClick={handleCreate}
+            onClick={handleSubmit}
             className="rounded-lg bg-black px-5 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800"
           >
-            Create question
+            {initialQuestion ? "Save question" : "Create question"}
           </button>
         </div>
       </div>
@@ -228,4 +239,3 @@ const CustomQuestionPopUp = ({
 };
 
 export default CustomQuestionPopUp;
-

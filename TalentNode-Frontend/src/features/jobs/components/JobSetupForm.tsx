@@ -1,11 +1,18 @@
 import type { Dispatch, FormEvent, SetStateAction } from 'react'
 import type { Job } from '../services/JobSchema'
 
+
+import type { JobCategory } from '../../settings/services/jobCategoriesService'
+import JobDepartmentSelect from './JobDepartmentSelect'
+
 type JobSetupFormProps = {
   title: string
   setTitle: Dispatch<SetStateAction<string>>
   department: string
   setDepartment: Dispatch<SetStateAction<string>>
+  categories: JobCategory[]
+  departmentDisabled?: boolean
+
   location: string
   setLocation: Dispatch<SetStateAction<string>>
   workMode: Job['workMode']
@@ -44,11 +51,14 @@ type JobSetupFormProps = {
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
 }
 
+
 const JobSetupForm = ({
   title,
   setTitle,
   department,
   setDepartment,
+  categories,
+  departmentDisabled,
   location,
   setLocation,
   workMode,
@@ -86,6 +96,7 @@ const JobSetupForm = ({
   onCancel,
   onSubmit,
 }: JobSetupFormProps) => {
+
   return (
     <form
       onSubmit={onSubmit}
@@ -103,13 +114,22 @@ const JobSetupForm = ({
         </label>
 
         <label className="block">
-          <span className="text-sm font-medium text-gray-700">Department</span>
-          <input
+          <span className="text-sm font-medium text-gray-700">
+            Job category
+          </span>
+          <JobDepartmentSelect
+            categories={categories}
             value={department}
-            onChange={(event) => setDepartment(event.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 outline-none focus:border-gray-900"
+            onChange={setDepartment}
+            disabled={departmentDisabled}
           />
         </label>
+
+
+
+
+
+
 
         <label className="block">
           <span className="text-sm font-medium text-gray-700">Location</span>

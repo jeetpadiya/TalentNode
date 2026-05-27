@@ -68,7 +68,12 @@ const CandidateTabs = ({ activeTab, onTabChange, candidate }: CandidateTabsProps
           />
         ) : null}
 
-        {activeTab === 'messages' ? <CandidateMessagesTab /> : null}
+        {activeTab === 'messages' ? (
+          <CandidateMessagesTab
+            jobId={candidate.jobId ?? candidate.applicationId ?? ''}
+            applicationId={candidate.applicationId ?? ''}
+          />
+        ) : null}
 
         {activeTab === 'resume' ? (
           <CandidateResumeTab resumeUrl={candidate.resume} />

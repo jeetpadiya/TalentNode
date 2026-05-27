@@ -189,6 +189,7 @@ export const requireJobAssignedToInterviewerOr403 = async (
 
 export const getCandidateApplicationOr404 = async (
   params: {
+    applicationId?: string;
     jobId: string;
     candidateId: string;
     organizationId: string;
@@ -196,13 +197,18 @@ export const getCandidateApplicationOr404 = async (
   },
   res: Response
 ) => {
-  const { jobId, candidateId, organizationId, populateCandidate } = params;
+  const { applicationId, jobId, candidateId, organizationId, populateCandidate } = params;
 
-  const query = CandidateApplicationModel.findOne({
-    jobId,
-    candidateId,
-    organizationId,
-  });
+  const query = CandidateApplicationModel.findOne(
+    applicationId
+      ? {
+          $or: [
+            { applicationId },
+            { jobId, candidateId, organizationId },
+          ],
+        }
+      : { jobId, candidateId, organizationId },
+  );
 
   const application = populateCandidate
     ? await query.populate("candidateId", "name email")
@@ -217,6 +223,51 @@ export const getCandidateApplicationOr404 = async (
   }
 
   return application;
+};
+
+export const findCandidateApplicationForAssignment = async (params: {
+  applicationId: string;
+  jobId: string;
+  candidateId: string | mongoose.Types.ObjectId;
+  organizationId: string;
+}) => {
+  const { applicationId, jobId, candidateId, organizationId } = params;
+
+  const application = await CandidateApplicationModel.findOne({
+    $or: [
+      { applicationId },
+      { jobId, candidateId, organizationId },
+    ],
+  });
+
+  if (
+    application &&
+    (!application.applicationId || String(application.applicationId) !== String(applicationId))
+  ) {
+    application.applicationId = new mongoose.Types.ObjectId(applicationId);
+    await application.save();
+  }
+
+  return application;
+};
+
+export const ensureCandidateApplicationForAssignment = async (params: {
+  applicationId: string;
+  jobId: string;
+  candidateId: string | mongoose.Types.ObjectId;
+  organizationId: string;
+}) => {
+  const { applicationId, jobId, candidateId, organizationId } = params;
+
+  const existing = await findCandidateApplicationForAssignment(params);
+  if (existing) return existing;
+
+  return CandidateApplicationModel.create({
+    applicationId,
+    jobId,
+    candidateId,
+    organizationId,
+  });
 };
 
 export const getCandidateOr404 = async (
@@ -239,7 +290,6 @@ export const getCandidateOr404 = async (
 
   return candidate;
 };
-
 
 
 

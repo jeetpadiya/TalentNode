@@ -1,6 +1,7 @@
 import express from 'express';
 import {
     createCandidate,
+    deleteCandidate,
     getCandidateById,
     getCandidates,
     updateCandidate,
@@ -16,6 +17,7 @@ router.post('/', ...withOrg, createCandidate);
 router.get('/', ...withOrg, getCandidates);
 router.get('/:id', ...withOrg, getCandidateById);
 router.put('/:id', ...withOrg, updateCandidate);
+router.delete('/:id', ...withOrg, deleteCandidate);
 
 
 export default router;

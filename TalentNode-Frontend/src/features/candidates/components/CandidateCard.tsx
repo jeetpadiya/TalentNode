@@ -12,13 +12,17 @@ export const CandidateCard = ({ candidate: c, selectedJobId }: Props) => {
     const { organizationId } = useParams()
 
     const handleOpenApplication = () => {
-        if (!organizationId || !selectedJobId || !c.applicationId) return
+        if (!organizationId || !selectedJobId) return
+
+        const targetApplicationId = c.applicationId ?? c._id
+        if (!targetApplicationId) return
 
         navigate({
-            pathname: `/organizations/${organizationId}/applications/${c.applicationId}`,
+            pathname: `/organizations/${organizationId}/applications/${targetApplicationId}`,
             search: `?job=${encodeURIComponent(selectedJobId)}`,
         })
     }
+
 
     return (
 

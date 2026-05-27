@@ -1,5 +1,5 @@
 import express from 'express';
-import { getApplicationsByHiringStageForJob, moveApplicationToHiringStage } from '../controllers/JobCandidateAssignment.js';
+import { getApplicationsByHiringStageForJob, moveApplicationToHiringStage, resolveCandidateApplication } from '../controllers/JobCandidateAssignment.js';
 import { getCandidatesForJob } from '../controllers/CandidateController.js';
 import { authenticate } from '../middleware/authenticate.js';
 import { requireActiveOrganization } from '../middleware/organizationContext.js';
@@ -17,6 +17,12 @@ router.patch(
   ...withOrg,
   requireOrganizationRoles('admin', 'recruiter', 'hiring_manager'),
   moveApplicationToHiringStage,
+);
+router.patch(
+  '/:jobId/applications/:applicationId/resolve',
+  ...withOrg,
+  requireOrganizationRoles('admin', 'recruiter', 'hiring_manager'),
+  resolveCandidateApplication,
 );
 
 

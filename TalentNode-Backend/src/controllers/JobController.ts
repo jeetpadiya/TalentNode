@@ -3,7 +3,11 @@ import type { Request, Response } from "express";
 import { DEFAULT_HIRING_STAGES } from "../constants/defaultHiringStages.js";
 import JobsModel from "../models/JobsModel.js";
 import UserModel from "../models/UserModel.js";
-import { createJobSchema, updateJobSchema } from "../validations/jobSchemas.js";
+import JobCategoryModel from "../models/JobCategoryModel.js";
+import { createJobSchema, updateJobSchema, updateJobStatusSchema } from "../validations/jobSchemas.js";
+import mongoose from "mongoose";
+
+
 import {
     canManageOrganizationRecruitingData,
     getAccessibleJobFilterForUser,
@@ -26,10 +30,13 @@ const serializeHiringStages = (job: any) => {
         }));
 };
 
-const serializeJob = (job: any) => ({
+const serializeJob = (job: any, departmentName: string | null = null) => ({
     id: job._id,
     title: job.title,
+    // Backward compatible field (stored string)
     department: job.department ?? null,
+    // Friendly name
+    departmentName: departmentName ?? null,
     location: job.location ?? null,
     workMode: job.workMode ?? "onsite",
     employmentType: job.employmentType ?? "full_time",
@@ -132,12 +139,11 @@ const getJobs = async (req: Request, res: Response) => {
 
         const jobFilter = await getAccessibleJobFilterForUser(userId, String(organizationId));
 
-        const jobs = await JobsModel.find(jobFilter)
-            .sort({ createdAt: -1 });
+        const jobs = await JobsModel.find(jobFilter).sort({ createdAt: -1 });
 
         return res.status(200).json({
             success: true,
-            jobs: jobs.map(serializeJob),
+            jobs: jobs.map((j) => serializeJob(j, null)),
         });
     } catch (error) {
         console.error("Error fetching jobs:", error);
@@ -181,9 +187,49 @@ const getJobById = async (req: Request, res: Response) => {
             }
         }
 
+        // Resolve friendly department name from stored department string.
+        // Expected convention (front-end mapper): "{categoryId}|{categoryName}".
+        // Fallback: if stored value is just a category id or category name.
+        let departmentName: string | null = null;
+        const rawDepartment = job.department;
+
+        if (rawDepartment) {
+            const parts = String(rawDepartment).split('|');
+            const maybeId = parts[0] ?? '';
+            const rest = parts.slice(1);
+
+            // id|name
+            if (rest.length > 0 && maybeId) {
+                const maybeName = rest.join('|').trim();
+                if (maybeName) departmentName = maybeName;
+            }
+
+            // fallback lookup
+            if (!departmentName) {
+                // Only attempt _id lookup if maybeId is a valid ObjectId.
+                // This prevents CastError when rawDepartment is actually a name (e.g. "software developer").
+                if (maybeId && mongoose.Types.ObjectId.isValid(maybeId)) {
+                    const byId = await JobCategoryModel.findOne({
+                        _id: maybeId,
+                        organizationId: String(organizationId),
+                    }).select('name');
+                    departmentName = byId?.name ?? null;
+                }
+
+                if (!departmentName) {
+                    const byName = await JobCategoryModel.findOne({
+                        name: rawDepartment,
+                        organizationId: String(organizationId),
+                    }).select('name');
+                    departmentName = byName?.name ?? null;
+                }
+            }
+
+        }
+
         return res.status(200).json({
             success: true,
-            job: serializeJob(job),
+            job: serializeJob(job, departmentName),
         });
     } catch (error) {
         console.error("Error fetching job by id:", error);
@@ -258,5 +304,106 @@ const updateJob = async (req: Request, res: Response) => {
     }
 };
 
+const updateJobStatus = async (req: Request, res: Response) => {
+    try {
+        const userId = req.user?.id;
+        if (!userId) {
+            return res.status(401).json({ success: false, message: "Unauthorized" });
+        }
 
-export { createJob, getJobs, getJobById, updateJob };
+        const parsedBody = updateJobStatusSchema.safeParse(req.body);
+        if (!parsedBody.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Validation failed",
+                errors: formatZodErrors(parsedBody.error.issues),
+            });
+        }
+
+        const user = await UserModel.findById(userId).select("organizationId");
+        const organizationId = user?.organizationId;
+        if (!organizationId) {
+            return res.status(400).json({
+                success: false,
+                message: "Organization is required to update this job",
+            });
+        }
+
+        if (!(await canManageOrganizationRecruitingData(userId, String(organizationId)))) {
+            return res.status(403).json({
+                success: false,
+                message: "Only admins and recruiters can update job status",
+            });
+        }
+
+        const { status } = parsedBody.data;
+
+        const updatedJob = await JobsModel.findOneAndUpdate(
+            { _id: req.params.id, organizationId },
+            { status, ...(status === 'open' ? { isPublished: true } : {}) },
+            { new: true, runValidators: true },
+        );
+
+        if (!updatedJob) {
+            return res.status(404).json({ success: false, message: "Job not found" });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Job status updated successfully",
+            job: serializeJob(updatedJob),
+        });
+    } catch (error) {
+        console.error("Error updating job status:", error);
+        return res.status(500).json({ success: false, message: "Server error" });
+    }
+};
+
+const updateJobPublish = async (req: Request, res: Response) => {
+    try {
+        const userId = req.user?.id;
+        if (!userId) {
+            return res.status(401).json({ success: false, message: "Unauthorized" });
+        }
+
+        const { isPublished } = req.body as { isPublished?: boolean };
+        if (typeof isPublished !== 'boolean') {
+            return res.status(400).json({ success: false, message: "isPublished (boolean) is required" });
+        }
+
+        const user = await UserModel.findById(userId).select("organizationId");
+        const organizationId = user?.organizationId;
+        if (!organizationId) {
+            return res.status(400).json({ success: false, message: "Organization is required" });
+        }
+
+        if (!(await canManageOrganizationRecruitingData(userId, String(organizationId)))) {
+            return res.status(403).json({ success: false, message: "Only admins and recruiters can publish jobs" });
+        }
+
+        // When publishing, also set status to 'open'. When unpublishing, set status to 'paused'.
+        const statusUpdate = isPublished ? { isPublished: true, status: 'open', publishedAt: new Date() } : { isPublished: false, status: 'paused' };
+
+        const updatedJob = await JobsModel.findOneAndUpdate(
+            { _id: req.params.id, organizationId },
+            statusUpdate,
+            { new: true, runValidators: true },
+        );
+
+        if (!updatedJob) {
+            return res.status(404).json({ success: false, message: "Job not found" });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: isPublished ? "Job published successfully" : "Job unpublished successfully",
+            job: serializeJob(updatedJob),
+        });
+    } catch (error) {
+        console.error("Error updating job publish status:", error);
+        return res.status(500).json({ success: false, message: "Server error" });
+    }
+};
+
+export { createJob, getJobs, getJobById, updateJob, updateJobStatus, updateJobPublish };
+

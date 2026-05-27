@@ -11,6 +11,8 @@ import {
   getAssignmentOr404,
   getAuthUserId,
   getOrganizationIdFromUserId,
+  ensureCandidateApplicationForAssignment,
+  findCandidateApplicationForAssignment,
   parseObjectId,
 } from "./helpers/controllerUtils.js";
 import { logError, sendError } from "../utils/errorHandling.js";
@@ -192,20 +194,12 @@ const createReviewRequest = async (req: Request, res: Response) => {
       });
     }
 
-    let application = await CandidateApplicationModel.findOne({
+    const application = await ensureCandidateApplicationForAssignment({
+      applicationId: context.applicationId,
       jobId: context.jobId,
       candidateId: context.candidateId,
       organizationId: context.organizationId,
     });
-
-    if (!application) {
-      application = await CandidateApplicationModel.create({
-        jobId: context.jobId,
-        candidateId: context.candidateId,
-        organizationId: context.organizationId,
-        reviewRequests: [],
-      });
-    }
 
     const hasPending = (application.reviewRequests ?? []).some(
       (entry) =>
@@ -253,14 +247,16 @@ const getReviewRequests = async (req: Request, res: Response) => {
     const context = await getApplicationContext(req, res);
     if (!context) return;
 
-    const application = await CandidateApplicationModel.findOne({
+    const application = await findCandidateApplicationForAssignment({
+      applicationId: context.applicationId,
       jobId: context.jobId,
       candidateId: context.candidateId,
       organizationId: context.organizationId,
-    })
-      .select("reviewRequests")
-      .populate("reviewRequests.assigneeUserId", "username email")
-      .populate("reviewRequests.requestedBy", "username email");
+    });
+    if (application) {
+      await application.populate("reviewRequests.assigneeUserId", "username email");
+      await application.populate("reviewRequests.requestedBy", "username email");
+    }
 
     const reviewRequests = (application?.reviewRequests ?? [])
       .slice()

@@ -15,6 +15,10 @@ import JobSetupPage from './features/jobs/pages/JobSetupPage'
 import CreateOrganizationPage from './features/organization/pages/CreateOrganizationPage'
 import OrganizationDetailsPage from './features/organization/pages/OrganizationDetailsPage'
 
+import PublicJobsPage from './features/public/pages/PublicJobsPage'
+import PublicJobApplyPage from './features/public/pages/PublicJobApplyPage'
+
+
 import CandidatesPage from './features/candidates/pages/CandidatesPage'
 import DashboardPage from './features/dashboard/pages/DashboardPage'
 import JobsPage from './features/jobs/pages/JobsPage'
@@ -23,6 +27,9 @@ import { OrganizationPage } from './features/organization/pages/OrganizationPage
 import SettingPage from './features/settings/pages/SettingPage'
 import UserPreferencesPage from './features/settings/pages/UserPreferencesPage'
 import AcceptInvitePage from './features/settings/pages/AcceptInvitePage'
+import ProfilePage from './features/settings/pages/ProfilePage'
+import AccountSettingsPage from './features/settings/pages/AccountSettingsPage'
+
 
 const App = () => {
   return (
@@ -33,8 +40,19 @@ const App = () => {
           <Route path="/register" element={<RegisterPage />} />
         </Route>
 
+        <Route path="/public/:slug/jobs" element={<PublicJobsPage />} />
+        <Route path="/public/jobs/:jobId" element={<PublicJobApplyPage />} />
+        <Route path="/public/jobs/:jobId/apply" element={<PublicJobApplyPage />} />
+
+
         <Route element={<ProtectedRoutes />}>
+          <Route element={<MainLayout />}>
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/account-settings" element={<AccountSettingsPage />} />
+          </Route>
+
           <Route path="/accept-invite/:token" element={<AcceptInvitePage />} />
+
 
           <Route element={<MainLayout />}>
             <Route

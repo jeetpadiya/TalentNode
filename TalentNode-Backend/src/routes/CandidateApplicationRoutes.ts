@@ -5,6 +5,10 @@ import {
   createReviewRequest,
   getReviewRequests,
 } from '../controllers/applicationReviewController.js'
+import {
+  sendEmailToCandidate,
+  getCandidateEmails,
+} from '../controllers/applicationEmailController.js'
 import { authenticate } from '../middleware/authenticate.js';
 import { requireActiveOrganization } from '../middleware/organizationContext.js';
 import { requireHiringTeamAccess } from '../middleware/organizationAuthorization.js';
@@ -60,5 +64,16 @@ router.post(
   createReviewRequest,
 );
 
+
+router.post(
+  '/:jobId/applications/:applicationId/emails',
+  ...hiringPipeline,
+  sendEmailToCandidate,
+);
+router.get(
+  '/:jobId/applications/:applicationId/emails',
+  ...hiringPipeline,
+  getCandidateEmails,
+);
 
 export default router;

@@ -2,7 +2,6 @@ import { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import UserModel from '../models/UserModel.js';
 import JobsModel from '../models/JobsModel.js';
-import CandidateApplicationModel from '../models/CandidateApplicationModel.js';
 import JobCandidateAssignmentModel from '../models/JobCandidateAssignmentModel.js';
 import { getParamValue } from '../utils/ParamValue.js';
 
@@ -14,6 +13,8 @@ import {
   getAssignmentOr404,
   parseObjectId,
   getAccessibleJobFilterForUser,
+  ensureCandidateApplicationForAssignment,
+  findCandidateApplicationForAssignment,
 } from './helpers/controllerUtils.js';
 
 
@@ -69,28 +70,19 @@ const createComment = async (req: Request, res: Response) => {
         if (!candidate) return;
 
 
-        const application = await CandidateApplicationModel.findOneAndUpdate(
-            { jobId, candidateId, organizationId },
-            {
-                $setOnInsert: {
-                    jobId,
-                    candidateId,
-                    organizationId,
-                },
+        const application = await ensureCandidateApplicationForAssignment({
+            applicationId,
+            jobId,
+            candidateId,
+            organizationId,
+        });
 
-                $push: {
-                    comments: {
-                        text: comment,
-                        createdBy: userId,
-                        createdAt: new Date(),
-                    },
-                },
-            },
-            {
-                new: true,
-                upsert: true,
-            }
-        );
+        application.comments.push({
+            text: comment,
+            createdBy: new mongoose.Types.ObjectId(userId),
+            createdAt: new Date(),
+        });
+        await application.save();
 
         return res.status(200).json({
             success: true,
@@ -191,22 +183,23 @@ const getApplicationComments = async (
     }
 
     // Fetch ONLY this candidate application
-    const application = await CandidateApplicationModel
-      .findOne({
-        jobId,
-        candidateId: assignment.candidateId,
-        organizationId,
-      })
-      .populate("candidateId", "name email")
-      .populate("comments.createdBy", "username email");
+    const application = await findCandidateApplicationForAssignment({
+      applicationId,
+      jobId,
+      candidateId: assignment.candidateId,
+      organizationId: String(organizationId),
+    });
 
     if (!application) {
       return res.status(404).json({
         success: false,
         message:
-          "Candidate application not found",
+        "Candidate application not found",
       });
     }
+
+    await application.populate("candidateId", "name email");
+    await application.populate("comments.createdBy", "username email");
 
     return res.status(200).json({
       success: true,
@@ -310,10 +303,11 @@ const editApplicationComment = async (req: Request, res: Response) => {
       });
     }
 
-    const application = await CandidateApplicationModel.findOne({
+    const application = await findCandidateApplicationForAssignment({
+      applicationId: safeApplicationId,
       jobId: safeJobId,
       candidateId: assignment.candidateId,
-      organizationId,
+      organizationId: String(organizationId),
     });
 
     if (!application) {
@@ -468,14 +462,12 @@ const DeleteApplicationComment = async (
 
     // Find candidate application
     const application =
-      await CandidateApplicationModel.findOne(
-        {
-          jobId,
-          candidateId:
-            assignment.candidateId,
-          organizationId,
-        }
-      );
+      await findCandidateApplicationForAssignment({
+        applicationId,
+        jobId,
+        candidateId: assignment.candidateId,
+        organizationId: String(organizationId),
+      });
 
     if (!application) {
       return res.status(404).json({
@@ -540,4 +532,3 @@ const DeleteApplicationComment = async (
 };
 
 export { createComment, getApplicationComments, editApplicationComment,DeleteApplicationComment };
-

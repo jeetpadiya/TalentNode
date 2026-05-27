@@ -13,9 +13,11 @@ import userPreferencesRoutes from './routes/UserPreferencesRoutes.js'
 import messageTemplateRoutes from './routes/MessageTemplateRoutes.js'
 import reviewTemplateRoutes from './routes/ReviewTemplateRoutes.js'
 import jobCategoryRoutes from './routes/JobCategoryRoutes.js'
+import publicJobRoutes from './routes/PublicJobRoutes.js'
 
 
 dotenv.config();
+
 
 
 
@@ -39,9 +41,11 @@ app.use('/api/candidates', candidate);
 app.use('/api/organizations/:organizationId/message-templates', messageTemplateRoutes);
 app.use('/api/organizations/:organizationId/review-templates', reviewTemplateRoutes);
 app.use('/api/organizations/:organizationId/job-categories', jobCategoryRoutes);
+app.use('/api/public', publicJobRoutes);
 
 
 const PORT = process.env.PORT || 5000;
+
 
 const startServer = async () => {
     try {

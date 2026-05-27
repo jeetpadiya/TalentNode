@@ -49,3 +49,7 @@ export const updateJobSchema = createJobSchema
     .refine((value) => Object.keys(value).length > 0, {
         message: "At least one field is required",
     });
+
+export const updateJobStatusSchema = z.object({
+    status: z.enum(["draft", "open", "paused", "closed", "archived"]),
+});
