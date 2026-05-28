@@ -45,14 +45,21 @@ const allowedOrigins =
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow non-browser clients (no Origin header)
+      console.log("Incoming origin:", origin);
+      console.log("Allowed origins:", allowedOrigins);
+
       if (!origin) return callback(null, true);
-      if (allowedOrigins.length === 0) return callback(new Error("CORS_ORIGIN_NOT_ALLOWED"));
-      if (allowedOrigins.includes(origin)) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      console.log("Blocked by CORS:", origin);
+
       return callback(new Error("CORS_ORIGIN_NOT_ALLOWED"));
     },
     credentials: true,
-  }),
+  })
 );
 app.use(express.json());
 
