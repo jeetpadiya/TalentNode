@@ -1,10 +1,12 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { Toaster } from 'sonner'
 import MainLayout from './app/layouts/MainLayout'
 import OrganizationContextRoutes from './app/routes/OrganizationContextRoutes'
 import OrganizationRequiredRoutes from './app/routes/OrganizationRequiredRoutes'
 import OrganizationScopedRedirect from './app/routes/OrganizationScopedRedirect'
 import ProtectedRoutes from './app/routes/ProtectedRoutes'
 import PublicRoutes from './app/routes/PublicRoutes'
+import RequireRole from './app/routes/RequireRole'
 import ApplicationsPage from './features/applications/pages/ApplicationsPage'
 import LoginPage from './features/auth/pages/LoginPage'
 import RegisterPage from './features/auth/pages/RegisterPage'
@@ -23,6 +25,7 @@ import CandidatesPage from './features/candidates/pages/CandidatesPage'
 import DashboardPage from './features/dashboard/pages/DashboardPage'
 import JobsPage from './features/jobs/pages/JobsPage'
 import NotFoundPage from './pages/NotFoundPage'
+import ForbiddenPage from './pages/ForbiddenPage'
 import { OrganizationPage } from './features/organization/pages/OrganizationPage'
 import SettingPage from './features/settings/pages/SettingPage'
 import UserPreferencesPage from './features/settings/pages/UserPreferencesPage'
@@ -33,17 +36,20 @@ import AccountSettingsPage from './features/settings/pages/AccountSettingsPage'
 
 const App = () => {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route element={<PublicRoutes />}>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-        </Route>
+    <>
+      <Toaster richColors position="top-right" closeButton />
+      <BrowserRouter>
+        <Routes>
+          <Route element={<PublicRoutes />}>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+          </Route>
 
         <Route path="/public/:slug/jobs" element={<PublicJobsPage />} />
         <Route path="/public/jobs/:jobId" element={<PublicJobApplyPage />} />
         <Route path="/public/jobs/:jobId/apply" element={<PublicJobApplyPage />} />
 
+        <Route path="/forbidden" element={<ForbiddenPage />} />
 
         <Route element={<ProtectedRoutes />}>
           <Route element={<MainLayout />}>
@@ -91,36 +97,58 @@ const App = () => {
                 <Route index element={<OrganizationDetailsPage />} />
                 <Route path="dashboard" element={<DashboardPage />} />
                 <Route path="jobs" element={<JobsPage />} />
-                <Route path="jobs/:jobId/setup" element={<JobSetupPage />} />
-                <Route
-                  path="jobs/:jobId/application-form"
-                  element={<JobApplicationFormPage />}
-                />
-                <Route
-                  path="jobs/:jobId/hiring-stages"
-                  element={<JobHiringStagesPage />}
-                />
-                <Route
-                  path="jobs/:jobId/hiring-team"
-                  element={<JobHiringTeamPage />}
-                />
+
+                {/* Recruiting management (admin/recruiter only) */}
+                <Route element={<RequireRole allowed={['admin', 'recruiter']} />}>
+                  <Route path="jobs/:jobId/setup" element={<JobSetupPage />} />
+                  <Route
+                    path="jobs/:jobId/application-form"
+                    element={<JobApplicationFormPage />}
+                  />
+                  <Route
+                    path="jobs/:jobId/hiring-stages"
+                    element={<JobHiringStagesPage />}
+                  />
+                  <Route
+                    path="jobs/:jobId/hiring-team"
+                    element={<JobHiringTeamPage />}
+                  />
+                  <Route path="settings" element={<SettingPage />} />
+                </Route>
+
                 <Route path="candidates" element={<CandidatesPage />} />
                 {/* <Route path="candidates/:candidateId" element={<CandidatesPage />} /> */}
                 <Route path="applications" element={<ApplicationsPage />} />
                 <Route path="applications/:applicationId" element={<ApplicationsPage />} />
-                <Route path="settings" element={<SettingPage />} />
+
+                {/* Everyone can update their own preferences */}
                 <Route
-                  path="settings/user-preferences"
-                  element={<UserPreferencesPage />}
-                />
+                  element={
+                    <RequireRole
+                      allowed={[
+                        'admin',
+                        'recruiter',
+                        'hiring_manager',
+                        'interviewer',
+                        'candidate',
+                      ]}
+                    />
+                  }
+                >
+                  <Route
+                    path="settings/user-preferences"
+                    element={<UserPreferencesPage />}
+                  />
+                </Route>
               </Route>
             </Route>
           </Route>
         </Route>
 
-        <Route path="*" element={<NotFoundPage />} />
-      </Routes>
-    </BrowserRouter>
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+      </BrowserRouter>
+    </>
   )
 }
 

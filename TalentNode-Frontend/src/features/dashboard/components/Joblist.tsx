@@ -3,6 +3,18 @@ import type { Job } from '../../jobs/services/JobSchema'
 
 const formatJobStatus = (s: string) => s.replace(/_/g, ' ')
 
+const formatDepartment = (raw: string | null | undefined) => {
+    if (!raw) return ''
+    // backend may store "{categoryId}|{categoryName}" for job category
+    if (raw.includes('|')) {
+        const parts = raw.split('|')
+        const name = parts.slice(1).join('|').trim()
+        return name || raw
+    }
+    return raw
+}
+
+
 interface Props {
     base: string
     jobs: Job[]
@@ -15,7 +27,7 @@ export const JobList = ({ base, jobs }: Props) => (
                 id="dash-jobs-heading"
                 className="text-lg font-semibold text-gray-900"
             >
-                Jobs
+                Recent jobs
             </h2>
             <Link
                 to={`${base}/jobs`}
@@ -27,7 +39,11 @@ export const JobList = ({ base, jobs }: Props) => (
 
         {jobs.length === 0 ? (
             <p className="rounded-xl border border-dashed border-gray-200 bg-gray-50/60 px-4 py-8 text-center text-sm text-gray-600">
-                No jobs yet. Create one from the navbar to get started.
+                No jobs yet.
+                <span className="block text-sm text-gray-600">
+                  Create your first job and start managing candidates.
+                </span>
+
             </p>
         ) : (
             <ul className="space-y-2">
@@ -44,7 +60,9 @@ export const JobList = ({ base, jobs }: Props) => (
                                 </span> 
                             </div>
                             <p className="mt-1 text-xs text-gray-500">
-                                {[job.department, job.location].filter(Boolean).join(' · ') || 'Details in setup'}
+                                {[formatDepartment(job.department), job.location]
+                                    .filter(Boolean)
+                                    .join(' · ') || 'Details in setup'}
                             </p>
                         </Link>
                     </li>

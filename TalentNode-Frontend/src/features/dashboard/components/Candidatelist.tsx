@@ -14,10 +14,10 @@ export const CandidateList = ({ base, candidates }: Props) => (
                     id="dash-candidates-heading"
                     className="text-lg font-semibold text-gray-900"
                 >
-                    All candidates
+                    Recent candidates
                 </h2>
                 <p className="mt-0.5 text-xs text-gray-500">
-                    Organization roster (not filtered by job).
+                    Showing 3 most recent candidates.
                 </p>
             </div>
             <Link
@@ -29,17 +29,20 @@ export const CandidateList = ({ base, candidates }: Props) => (
         </div>
 
         {candidates.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-gray-200 bg-gray-50/60 px-4 py-8 text-center text-sm text-gray-600">
-                No candidates yet.{' '}
+            <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50/40 px-6 py-12 text-center">
+                <p className="text-base font-medium text-gray-900">No candidates yet</p>
+                <p className="mx-auto mt-2 max-w-md text-sm text-gray-600">
+                    Add your first candidate to start building your shortlist.
+                </p>
                 <Link
                     to={`${base}/candidates?add=1`}
-                    className="font-medium text-gray-900 underline-offset-4 hover:underline"
+                    className="mt-5 inline-flex items-center justify-center rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900/30"
                 >
-                    Add your first
+                    Add candidate
                 </Link>
-                .
-            </p>
+            </div>
         ) : (
+
             <ul className="space-y-2">
                 {candidates.map((c) => (
                     <li

@@ -87,8 +87,12 @@ const CandidateList = ({
 
       {activeStage && (activeStage.candidates?.length ?? 0) === 0 ? (
         <div className="mt-6 rounded-xl border border-dashed border-gray-300 bg-gray-50/40 px-6 py-14 text-center">
-          No candidates yet
+          <p className="text-base font-medium text-gray-900">No candidates yet</p>
+          <p className="mx-auto mt-2 max-w-xs text-sm text-gray-600">
+            Add candidates to this stage to start reviewing them.
+          </p>
         </div>
+
       ) : (
         <ul className="mt-4 grid gap-3">
           {activeStage?.candidates?.map(candidateCard)}

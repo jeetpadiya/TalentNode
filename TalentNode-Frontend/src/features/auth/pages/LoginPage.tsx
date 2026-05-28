@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../../app/store/AuthStore'
+import { toast } from '../../../app/ui/toast'
 
 const LoginPage = () => {
   const navigate = useNavigate()
@@ -14,7 +15,14 @@ const LoginPage = () => {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
-    await login(email, password)
+    try {
+      await login(email, password)
+      toast.success('Logged in')
+    } catch {
+      // store already sets error; toast adds immediate feedback
+      toast.error('Login failed')
+      return
+    }
 
     const user = useAuthStore.getState().user
     const from = (location.state as { from?: { pathname?: string } } | null)?.from

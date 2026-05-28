@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors'
 import dotenv from 'dotenv'
 import ConnectDB from './config/db.js';
+import rateLimit from "express-rate-limit";
 import userRoutes from './routes/UserRoutes.js';
 import organizationRoutes from './routes/OrganizationRoutes.js';
 import jobRoutes from './routes/JobRoutes.js';
@@ -14,6 +15,7 @@ import messageTemplateRoutes from './routes/MessageTemplateRoutes.js'
 import reviewTemplateRoutes from './routes/ReviewTemplateRoutes.js'
 import jobCategoryRoutes from './routes/JobCategoryRoutes.js'
 import publicJobRoutes from './routes/PublicJobRoutes.js'
+import { errorHandler } from './middleware/errorHandler.js'
 
 
 dotenv.config();
@@ -23,8 +25,47 @@ dotenv.config();
 
 const app = express();
 
-app.use(cors());
+const rawOrigins = (process.env.CORS_ORIGINS ?? "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+// Dev-safe defaults (Vite + common local ports)
+const defaultDevOrigins = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+];
+
+const allowedOrigins =
+  rawOrigins.length > 0 ? rawOrigins : (process.env.NODE_ENV === "production" ? [] : defaultDevOrigins);
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow non-browser clients (no Origin header)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.length === 0) return callback(new Error("CORS_ORIGIN_NOT_ALLOWED"));
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      return callback(new Error("CORS_ORIGIN_NOT_ALLOWED"));
+    },
+    credentials: true,
+  }),
+);
 app.use(express.json());
+
+// Rate limit public endpoints (abuse protection)
+app.use(
+  "/api/public",
+  rateLimit({
+    windowMs: Number(process.env.PUBLIC_RATE_LIMIT_WINDOW_MS ?? 15 * 60_000),
+    max: Number(process.env.PUBLIC_RATE_LIMIT_MAX ?? 120),
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success: false, message: "Too many requests, please try again later." },
+  }),
+);
 
 app.get('/api/health', (_req, res) => {
     return res.status(200).json({ message: "Server is healthy" });
@@ -43,6 +84,8 @@ app.use('/api/organizations/:organizationId/review-templates', reviewTemplateRou
 app.use('/api/organizations/:organizationId/job-categories', jobCategoryRoutes);
 app.use('/api/public', publicJobRoutes);
 
+// Central error handler (must be last)
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 

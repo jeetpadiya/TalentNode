@@ -2,11 +2,28 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuthStore } from '../../../app/store/AuthStore'
 import { getJobs, updateJobStatus, type Job } from '../services/JobServices'
+import { toast } from '../../../app/ui/toast'
+import DensityToggle from '../../../components/common/DensityToggle'
+import { useDensity } from '../../../components/common/useDensity'
+
 
 
 const formatLabel = (value: string) => value.replace(/_/g, ' ')
 
+
+const formatDepartment = (raw: string | null | undefined) => {
+  if (!raw) return ''
+  // backend may store "{id}|{name}" for job category
+  if (raw.includes('|')) {
+    const parts = raw.split('|')
+    const name = parts.slice(1).join('|').trim()
+    return name || raw
+  }
+  return raw
+}
+
 const JobsPage = () => {
+  const [density] = useDensity('jobs')
   const { organizationId } = useParams()
   const accessToken = useAuthStore((state) => state.accessToken)
   const navigate = useNavigate()
@@ -71,6 +88,7 @@ const JobsPage = () => {
 
     try {
       await updateJobStatus(job.id, newStatus, accessToken)
+      toast.success(`Job ${newStatus === 'open' ? 'opened' : 'paused'}`)
     } catch (err) {
       // Revert on error
       setJobs((prev) =>
@@ -78,6 +96,7 @@ const JobsPage = () => {
       )
       console.error('Failed to update job status:', err)
       setError('Failed to update job status. Please try again.')
+      toast.error('Failed to update job status')
     }
   }
 
@@ -93,13 +112,45 @@ const JobsPage = () => {
       </div>
 
       {isLoading ? (
-        <p className="text-sm text-gray-600">Loading jobs...</p>
+        <div className="card p-5">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="h-5 w-40 animate-pulse rounded bg-gray-200" aria-hidden />
+              <div className="h-6 w-16 animate-pulse rounded-full bg-gray-200" aria-hidden />
+            </div>
+            {Array.from({ length: 3 }).map((_, idx) => (
+              <div
+                key={idx}
+                className="rounded-xl border border-gray-200 bg-white p-4"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-2">
+                    <div className="h-5 w-60 animate-pulse rounded bg-gray-200" aria-hidden />
+                    <div className="h-4 w-96 animate-pulse rounded bg-gray-200" aria-hidden />
+                  </div>
+                  <div className="h-6 w-20 animate-pulse rounded-full bg-gray-200" aria-hidden />
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <div className="h-5 w-24 animate-pulse rounded bg-gray-200" aria-hidden />
+                  <div className="h-5 w-20 animate-pulse rounded bg-gray-200" aria-hidden />
+                  <div className="h-5 w-28 animate-pulse rounded bg-gray-200" aria-hidden />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       ) : null}
 
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+
+
+      {error ? (
+        <p className="mt-4 rounded-lg border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-800">
+          {error}
+        </p>
+      ) : null}
 
       {!isLoading && !error && jobs.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-gray-300 bg-white p-8 text-center">
+        <div className="card border-dashed p-8 text-center">
           <h2 className="text-lg font-semibold text-gray-900">No jobs yet</h2>
           <p className="mt-2 text-sm text-gray-600">
             Use the Create a Job button in the navbar to start a draft.
@@ -107,15 +158,25 @@ const JobsPage = () => {
         </div>
       ) : null}
 
-      <div className="grid gap-4">
+      <div className="mt-4 flex items-start justify-between gap-3">
+        <DensityToggle densityKey="jobs" />
+      </div>
+      <div className="mt-4 grid gap-4">
         {jobs.map((job) => (
-          <button
+          <article
             key={job.id}
-            type="button"
+            role="button"
+            tabIndex={0}
             onClick={() =>
               navigate(`/organizations/${organizationId}/jobs/${job.id}/setup`)
             }
-            className="rounded-lg border border-gray-200 bg-white p-5 text-left shadow-sm hover:bg-gray-50"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                navigate(`/organizations/${organizationId}/jobs/${job.id}/setup`)
+              }
+            }}
+            className={`card text-left hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600/30 ${density === 'compact' ? 'p-3' : 'p-5'}`}
           >
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -123,7 +184,9 @@ const JobsPage = () => {
                   {job.title}
                 </h2>
                 <p className="mt-1 text-sm text-gray-600">
-                  {[job.department, job.location].filter(Boolean).join(' / ') ||
+                  {[formatDepartment(job.department), job.location]
+                    .filter(Boolean)
+                    .join(' / ') ||
                     'Details not added'}
                 </p>
               </div>
@@ -164,7 +227,7 @@ const JobsPage = () => {
                 {job.experienceLevel}
               </span>
             </div>
-          </button>
+          </article>
         ))}
       </div>
     </section>

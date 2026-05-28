@@ -36,7 +36,7 @@ const DashboardPage = () => {
             {!loading && !error ? (
                 <>
                     <DashboardStats base={base} jobs={jobs} candidates={candidates} />
-                    <div className="grid gap-10 lg:grid-cols-2">
+                    <div className="space-y-10">
                         <JobList base={base} jobs={recentJobs} />
                         <CandidateList base={base} candidates={recentCandidates} />
                     </div>

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
-import { FaSearch } from 'react-icons/fa'
+
 
 import { useAuthStore } from '../../../app/store/AuthStore'
 import type { ApplicationStage } from '../services/ApplicationServices'
@@ -231,10 +231,27 @@ const ApplicationsPage = () => {
           Pick a job to show its hiring stages and applications.
         </div>
       ) : stagesLoading ? (
-        <div className="flex items-center justify-center gap-3 rounded-xl border border-dashed border-gray-200 bg-gray-50/40 px-6 py-16 text-sm text-gray-600">
-          <FaSearch className="h-4 w-4" aria-hidden />
-          Loading applications…
+        <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50/40 px-6 py-16">
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="h-4 w-4 animate-pulse rounded-full bg-gray-300" aria-hidden />
+              <div className="h-5 w-40 animate-pulse rounded bg-gray-300" aria-hidden />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {Array.from({ length: 4 }).map((_, idx) => (
+                <div
+                  key={idx}
+                  className="rounded-xl border border-gray-200 bg-white p-4"
+                >
+                  <div className="h-4 w-56 animate-pulse rounded bg-gray-200" aria-hidden />
+                  <div className="mt-2 h-4 w-80 animate-pulse rounded bg-gray-200" aria-hidden />
+                  <div className="mt-4 h-5 w-24 animate-pulse rounded bg-gray-200" aria-hidden />
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
+
       ) : stagesError ? (
         <p className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-800">
           {stagesError}

@@ -61,7 +61,7 @@ export const useDashboard = () => {
         candidates,
         loading,
         error,
-        recentJobs: jobs.slice(0, 6),
-        recentCandidates: candidates.slice(0, 6),
+        recentJobs: jobs.slice(0, 3),
+        recentCandidates: candidates.slice(0, 3),
     }
 }

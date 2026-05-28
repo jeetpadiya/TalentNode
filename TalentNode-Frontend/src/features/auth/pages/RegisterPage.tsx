@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../../app/store/AuthStore'
+import { toast } from '../../../app/ui/toast'
 
 const RegisterPage = () => {
   const navigate = useNavigate()
@@ -15,7 +16,13 @@ const RegisterPage = () => {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
-    await register(username, email, password)
+    try {
+      await register(username, email, password)
+      toast.success('Account created')
+    } catch {
+      toast.error('Registration failed')
+      return
+    }
     const from = (location.state as { from?: { pathname?: string } } | null)?.from
     navigate(from?.pathname ?? '/organizations/new')
   }
