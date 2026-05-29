@@ -29,20 +29,19 @@ const getRequiredEnv = (key: string) => {
   return value
 }
 
+
+
 export const sendOrganizationInviteEmail = async (
   params: OrganizationInviteEmailParams,
 ) => {
   const { to, organizationName, inviterName, role, inviteUrl } = params
-
-  const transporter = nodemailer.createTransport({
-    host: getRequiredEnv('SMTP_HOST'),
-    port: Number(process.env.SMTP_PORT ?? 587),
-    secure: process.env.SMTP_SECURE === 'true',
-    auth: {
-      user: getRequiredEnv('SMTP_USER'),
-      pass: getRequiredEnv('SMTP_PASS'),
-    },
-  })
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+});
 
   await transporter.verify();
   console.log("SMTP verified successfully");
