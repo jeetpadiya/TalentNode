@@ -35,17 +35,28 @@ export const sendOrganizationInviteEmail = async (
   params: OrganizationInviteEmailParams,
 ) => {
   const { to, organizationName, inviterName, role, inviteUrl } = params
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
 
-  await transporter.verify();
-  console.log("SMTP verified successfully");
+  const transporter = nodemailer.createTransport({
+    host: getRequiredEnv('SMTP_HOST'),
+    port: Number(process.env.SMTP_PORT ?? 587),
+    secure: process.env.SMTP_SECURE === 'true',
+    auth: {
+      user: getRequiredEnv('SMTP_USER'),
+      pass: getRequiredEnv('SMTP_PASS'),
+    },
+    // Avoid IPv6-only failures in some hosting environments
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } as any)
 
+
+  console.log('SMTP transport configured (invite):', {
+    host: process.env.SMTP_HOST,
+    port: process.env.SMTP_PORT ?? 587,
+    secure: process.env.SMTP_SECURE,
+  })
+
+  await transporter.verify()
+  console.log('SMTP verified successfully (invite)')
 
   await transporter.sendMail({
     from: process.env.SMTP_FROM ?? process.env.SMTP_USER,
@@ -81,7 +92,7 @@ export const sendCandidateEmail = async (params: CandidateEmailParams) => {
       user: getRequiredEnv('SMTP_USER'),
       pass: getRequiredEnv('SMTP_PASS'),
     },
-  })
+  } as any)
 
   await transporter.sendMail({
     from: process.env.SMTP_FROM ?? process.env.SMTP_USER,
