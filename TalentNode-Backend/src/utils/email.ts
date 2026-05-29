@@ -11,6 +11,15 @@ type OrganizationInviteEmailParams = {
 
 dns.setDefaultResultOrder("ipv4first")
 
+console.log("DNS order configured");
+console.log(process.version);
+
+console.log({
+  host: process.env.SMTP_HOST,
+  port: process.env.SMTP_PORT,
+  secure: process.env.SMTP_SECURE,
+});
+
 const getRequiredEnv = (key: string) => {
   const value = process.env[key]
   if (!value) {
