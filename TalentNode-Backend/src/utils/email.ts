@@ -1,6 +1,9 @@
 import nodemailer from 'nodemailer'
 import dns from "node:dns"
 
+
+
+
 type OrganizationInviteEmailParams = {
   to: string
   organizationName: string
@@ -12,6 +15,7 @@ type OrganizationInviteEmailParams = {
 dns.setDefaultResultOrder("ipv4first")
 
 console.log("DNS order configured");
+
 console.log(process.version);
 
 console.log({
@@ -48,11 +52,20 @@ export const sendOrganizationInviteEmail = async (
       user: getRequiredEnv('SMTP_USER'),
       pass: getRequiredEnv('SMTP_PASS'),
     },
+
+    // Force IPv4 by resolving A records only (avoids ENETUNREACH on IPv6)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolveHostname: false,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolver: {
+      resolve4: async (host: string) => await dns.promises.lookup(host, { family: 4, all: true }),
+    } as any,
+
     connectionTimeout: 15_000,
     socketTimeout: 15_000,
-    // Avoid IPv6-only failures in some hosting environments
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any)
+
+
 
 
 
@@ -111,9 +124,19 @@ export const sendCandidateEmail = async (params: CandidateEmailParams) => {
       user: getRequiredEnv('SMTP_USER'),
       pass: getRequiredEnv('SMTP_PASS'),
     },
+
+    // Force IPv4 by resolving A records only (avoids ENETUNREACH on IPv6)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolveHostname: false,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolver: {
+      resolve4: async (host: string) => await dns.promises.lookup(host, { family: 4, all: true }),
+    } as any,
+
     connectionTimeout: 15_000,
     socketTimeout: 15_000,
   } as any)
+
 
   // Helpful runtime logging
   console.log('SMTP transport configured (candidate):', {
