@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer'
+import dns from "node:dns"
 
 type OrganizationInviteEmailParams = {
   to: string
@@ -7,6 +8,8 @@ type OrganizationInviteEmailParams = {
   role: string
   inviteUrl: string
 }
+
+dns.setDefaultResultOrder("ipv4first")
 
 const getRequiredEnv = (key: string) => {
   const value = process.env[key]
@@ -31,6 +34,10 @@ export const sendOrganizationInviteEmail = async (
       pass: getRequiredEnv('SMTP_PASS'),
     },
   })
+
+  await transporter.verify();
+  console.log("SMTP verified successfully");
+
 
   await transporter.sendMail({
     from: process.env.SMTP_FROM ?? process.env.SMTP_USER,
