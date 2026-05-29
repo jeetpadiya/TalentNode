@@ -36,17 +36,24 @@ export const sendOrganizationInviteEmail = async (
 ) => {
   const { to, organizationName, inviterName, role, inviteUrl } = params
 
+  const smtpHost = getRequiredEnv('SMTP_HOST')
+  const smtpPort = Number(process.env.SMTP_PORT ?? 587)
+  const smtpSecure = process.env.SMTP_SECURE === 'true'
+
   const transporter = nodemailer.createTransport({
-    host: getRequiredEnv('SMTP_HOST'),
-    port: Number(process.env.SMTP_PORT ?? 587),
-    secure: process.env.SMTP_SECURE === 'true',
+    host: smtpHost,
+    port: smtpPort,
+    secure: smtpSecure,
     auth: {
       user: getRequiredEnv('SMTP_USER'),
       pass: getRequiredEnv('SMTP_PASS'),
     },
+    connectionTimeout: 15_000,
+    socketTimeout: 15_000,
     // Avoid IPv6-only failures in some hosting environments
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any)
+
 
 
   console.log('SMTP transport configured (invite):', {
@@ -55,8 +62,16 @@ export const sendOrganizationInviteEmail = async (
     secure: process.env.SMTP_SECURE,
   })
 
-  await transporter.verify()
-  console.log('SMTP verified successfully (invite)')
+  // transporter.verify() can fail in container/hosting environments due to transient
+  // DNS/network restrictions. Sending the email is the real goal.
+  // Still keep a short verify attempt and don’t block request on failure.
+  try {
+    await transporter.verify()
+    console.log('SMTP verified successfully (invite)')
+  } catch (err) {
+    console.warn('SMTP verify skipped/failed (invite):', err)
+  }
+
 
   await transporter.sendMail({
     from: process.env.SMTP_FROM ?? process.env.SMTP_USER,
@@ -84,15 +99,29 @@ export type CandidateEmailParams = {
 export const sendCandidateEmail = async (params: CandidateEmailParams) => {
   const { to, subject, htmlBody } = params
 
+  const smtpHost = getRequiredEnv('SMTP_HOST')
+  const smtpPort = Number(process.env.SMTP_PORT ?? 587)
+  const smtpSecure = process.env.SMTP_SECURE === 'true'
+
   const transporter = nodemailer.createTransport({
-    host: getRequiredEnv('SMTP_HOST'),
-    port: Number(process.env.SMTP_PORT ?? 587),
-    secure: process.env.SMTP_SECURE === 'true',
+    host: smtpHost,
+    port: smtpPort,
+    secure: smtpSecure,
     auth: {
       user: getRequiredEnv('SMTP_USER'),
       pass: getRequiredEnv('SMTP_PASS'),
     },
+    connectionTimeout: 15_000,
+    socketTimeout: 15_000,
   } as any)
+
+  // Helpful runtime logging
+  console.log('SMTP transport configured (candidate):', {
+    host: smtpHost,
+    port: smtpPort,
+    secure: smtpSecure,
+    from: process.env.SMTP_FROM ?? process.env.SMTP_USER,
+  })
 
   await transporter.sendMail({
     from: process.env.SMTP_FROM ?? process.env.SMTP_USER,
