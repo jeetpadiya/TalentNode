@@ -1,152 +1,121 @@
-import nodemailer from 'nodemailer'
-import dns from "node:dns"
-
-
-
+import sgMail from "@sendgrid/mail";
 
 type OrganizationInviteEmailParams = {
-  to: string
-  organizationName: string
-  inviterName: string
-  role: string
-  inviteUrl: string
-}
+  to: string;
+  organizationName: string;
+  inviterName: string;
+  role: string;
+  inviteUrl: string;
+};
 
-dns.setDefaultResultOrder("ipv4first")
+export type CandidateEmailParams = {
+  to: string;
+  subject: string;
+  htmlBody: string;
+};
 
-console.log("DNS order configured");
+const getRequiredEnv = (key: string): string => {
+  const value = process.env[key];
 
-console.log(process.version);
-
-console.log({
-  host: process.env.SMTP_HOST,
-  port: process.env.SMTP_PORT,
-  secure: process.env.SMTP_SECURE,
-});
-
-const getRequiredEnv = (key: string) => {
-  const value = process.env[key]
   if (!value) {
-    throw new Error(`${key} is not configured`)
+    throw new Error(`${key} is not configured`);
   }
 
-  return value
-}
+  return value;
+};
 
+// Configure SendGrid once when the application starts
+sgMail.setApiKey(getRequiredEnv("SENDGRID_API_KEY"));
 
+const getFromEmail = () => {
+  return getRequiredEnv("SENDGRID_FROM_EMAIL");
+};
 
+/**
+ * Send organization invitation email
+ */
 export const sendOrganizationInviteEmail = async (
   params: OrganizationInviteEmailParams,
 ) => {
-  const { to, organizationName, inviterName, role, inviteUrl } = params
-
-  const smtpHost = getRequiredEnv('SMTP_HOST')
-  const smtpPort = Number(process.env.SMTP_PORT ?? 587)
-  const smtpSecure = process.env.SMTP_SECURE === 'true'
-
-  const transporter = nodemailer.createTransport({
-    host: smtpHost,
-    port: smtpPort,
-    secure: smtpSecure,
-    auth: {
-      user: getRequiredEnv('SMTP_USER'),
-      pass: getRequiredEnv('SMTP_PASS'),
-    },
-
-    // Force IPv4 by resolving A records only (avoids ENETUNREACH on IPv6)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    resolveHostname: false,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    resolver: {
-      resolve4: async (host: string) => await dns.promises.lookup(host, { family: 4, all: true }),
-    } as any,
-
-    connectionTimeout: 15_000,
-    socketTimeout: 15_000,
-  } as any)
-
-
-
-
-
-  console.log('SMTP transport configured (invite):', {
-    host: process.env.SMTP_HOST,
-    port: process.env.SMTP_PORT ?? 587,
-    secure: process.env.SMTP_SECURE,
-  })
+  const {
+    to,
+    organizationName,
+    inviterName,
+    role,
+    inviteUrl,
+  } = params;
 
   try {
-    await transporter.verify()
-    console.log('SMTP verified successfully (invite)')
-  } catch (err) {
-    console.warn('SMTP verify skipped/failed (invite):', err)
+    const [response] = await sgMail.send({
+      from: getFromEmail(),
+      to,
+      subject: `${inviterName} invited you to join ${organizationName}`,
+
+      html: `
+        <p>
+          ${inviterName} invited you to join
+          <strong>${organizationName}</strong>
+          as <strong>${role}</strong>.
+        </p>
+
+        <p>
+          <a href="${inviteUrl}">
+            Accept invite
+          </a>
+        </p>
+
+        <p>
+          This invite link expires in 7 days.
+        </p>
+      `,
+
+      text: [
+        `${inviterName} invited you to join ${organizationName} as ${role}.`,
+        `Accept invite: ${inviteUrl}`,
+        "This invite link expires in 7 days.",
+      ].join("\n\n"),
+    });
+
+    console.log("Organization invite email sent:", {
+      statusCode: response.statusCode,
+      to,
+    });
+
+    return response;
+  } catch (error) {
+    console.error("SendGrid organization invite error:", error);
+    throw error;
   }
+};
 
-
-  await transporter.sendMail({
-    from: process.env.SMTP_FROM ?? process.env.SMTP_USER,
-    to,
-    subject: `${inviterName} invited you to join ${organizationName}`,
-    html: `
-      <p>${inviterName} invited you to join <strong>${organizationName}</strong> as <strong>${role}</strong>.</p>
-      <p><a href="${inviteUrl}">Accept invite</a></p>
-      <p>This invite link expires in 7 days.</p>
-    `,
-    text: [
-      `${inviterName} invited you to join ${organizationName} as ${role}.`,
-      `Accept invite: ${inviteUrl}`,
-      'This invite link expires in 7 days.',
-    ].join('\n\n'),
-  })
-}
-
-export type CandidateEmailParams = {
-  to: string
-  subject: string
-  htmlBody: string
-}
-
-export const sendCandidateEmail = async (params: CandidateEmailParams) => {
-  const { to, subject, htmlBody } = params
-
-  const smtpHost = getRequiredEnv('SMTP_HOST')
-  const smtpPort = Number(process.env.SMTP_PORT ?? 587)
-  const smtpSecure = process.env.SMTP_SECURE === 'true'
-
-  const transporter = nodemailer.createTransport({
-    host: smtpHost,
-    port: smtpPort,
-    secure: smtpSecure,
-    auth: {
-      user: getRequiredEnv('SMTP_USER'),
-      pass: getRequiredEnv('SMTP_PASS'),
-    },
-
-    // Force IPv4 by resolving A records only (avoids ENETUNREACH on IPv6)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    resolveHostname: false,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    resolver: {
-      resolve4: async (host: string) => await dns.promises.lookup(host, { family: 4, all: true }),
-    } as any,
-
-    connectionTimeout: 15_000,
-    socketTimeout: 15_000,
-  } as any)
-
-
-  // Helpful runtime logging
-  console.log('SMTP transport configured (candidate):', {
-    host: smtpHost,
-    port: smtpPort,
-    secure: smtpSecure,
-    from: process.env.SMTP_FROM ?? process.env.SMTP_USER,
-  })
-
-  await transporter.sendMail({
-    from: process.env.SMTP_FROM ?? process.env.SMTP_USER,
+/**
+ * Send candidate email
+ */
+export const sendCandidateEmail = async (
+  params: CandidateEmailParams,
+) => {
+  const {
     to,
     subject,
-    html: htmlBody,
-  })
-}
+    htmlBody,
+  } = params;
+
+  try {
+    const [response] = await sgMail.send({
+      from: getFromEmail(),
+      to,
+      subject,
+      html: htmlBody,
+    });
+
+    console.log("Candidate email sent:", {
+      statusCode: response.statusCode,
+      to,
+    });
+
+    return response;
+  } catch (error) {
+    console.error("SendGrid candidate email error:", error);
+    throw error;
+  }
+};
