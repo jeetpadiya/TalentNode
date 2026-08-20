@@ -6,7 +6,6 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useAuthStore } from '../../../app/store/AuthStore'
 import type { ApplicationStage } from '../services/ApplicationServices'
 import {
-  getApplicationsByHiringStages,
   moveApplicationToHiringStage,
 } from '../services/ApplicationServices'
 import type { Candidate } from '../../candidates/services/CandidateSchema'
@@ -17,6 +16,8 @@ import CandidateDetails from '../components/CandidateDetails'
 
 
 
+import { useApplicationsQuery, useInvalidateTalentQueries } from '../../../hooks/useTalentQueries'
+
 const ApplicationsPage = () => {
   const accessToken = useAuthStore((state) => state.accessToken)
   const navigate = useNavigate()
@@ -24,47 +25,24 @@ const ApplicationsPage = () => {
   const [searchParams] = useSearchParams()
 
   const selectedJobId = searchParams.get('job')?.trim() ?? ''
+  const { invalidateApplications } = useInvalidateTalentQueries()
 
+  const {
+    data: fetchedStages = [],
+    isLoading: stagesLoading,
+    error: queryError,
+  } = useApplicationsQuery(organizationId, selectedJobId, accessToken)
 
-  const [stages, setStages] = useState<ApplicationStage[]>([])
-  const [stagesLoading, setStagesLoading] = useState(false)
-  const [stagesError, setStagesError] = useState<string | null>(null)
+  const [localStages, setLocalStages] = useState<ApplicationStage[] | null>(null)
+  const stages = localStages ?? fetchedStages
+
+  const stagesError = queryError ? 'Could not load applications.' : null
 
   const [activeStageId, setActiveStageId] = useState<string>('')
   const [selectedCandidateId, setSelectedCandidateId] = useState<string>('')
   const [moveTargetStageId, setMoveTargetStageId] = useState('')
   const [isMovingCandidate, setIsMovingCandidate] = useState(false)
   const [moveError, setMoveError] = useState<string | null>(null)
-
-
-
-  useEffect(() => {
-    if (!accessToken || !selectedJobId) {
-      setStages([])
-      setStagesError(null)
-      setActiveStageId('')
-      setSelectedCandidateId('')
-      return
-    }
-
-    setStagesLoading(true)
-    setStagesError(null)
-    void (async () => {
-      try {
-        const data = await getApplicationsByHiringStages(selectedJobId, accessToken)
-        setStages(data)
-      } catch (e) {
-        const message =
-          typeof e === 'object' && e !== null && 'message' in e
-            ? String((e as { message?: unknown }).message)
-            : 'Could not load applications.'
-        setStages([])
-        setStagesError(message)
-      } finally {
-        setStagesLoading(false)
-      }
-    })()
-  }, [accessToken, selectedJobId])
 
   useEffect(() => {
     if (stages.length === 0) return
@@ -174,8 +152,8 @@ const ApplicationsPage = () => {
         accessToken,
       )
 
-      const nextStages = await getApplicationsByHiringStages(selectedJobId, accessToken)
-      setStages(nextStages)
+      void invalidateApplications(organizationId, selectedJobId)
+      setLocalStages(null)
       setActiveStageId(moveTargetStageId)
       setSelectedCandidateId(selectedCandidate._id)
       setMoveTargetStageId('')
@@ -191,14 +169,16 @@ const ApplicationsPage = () => {
   }
 
   const handleCandidateDeleted = (candidateId: string) => {
-    setStages((currentStages) =>
-      currentStages.map((stage) => ({
+    setLocalStages((current) => {
+      const base = current ?? fetchedStages
+      return base.map((stage) => ({
         ...stage,
         candidates: stage.candidates.filter(
           (candidate) => candidate._id !== candidateId,
         ),
-      })),
-    )
+      }))
+    })
+    void invalidateApplications(organizationId, selectedJobId)
     setSelectedCandidateId('')
     setMoveTargetStageId('')
     setMoveError(null)

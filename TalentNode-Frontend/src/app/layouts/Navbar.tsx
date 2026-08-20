@@ -4,9 +4,8 @@ import { useAuthStore } from '../store/AuthStore'
 import JobPopUp from '../../features/jobs/components/JobPopUp'
 import { CiSettings } from "react-icons/ci";
 import { canAccessWorkspaceSettings } from '../auth/rbac'
-import { getOrganizationById } from '../../features/organization/services/organizationService'
+import { useOrganizationStore } from '../store/OrganizationStore'
 import { Menu, X } from 'lucide-react'
-
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   [
@@ -20,6 +19,8 @@ const Navbar = () => {
   const user = useAuthStore((state) => state.user)
   const accessToken = useAuthStore((state) => state.accessToken)
   const logout = useAuthStore((state) => state.logout)
+  const fetchOrganization = useOrganizationStore((state) => state.fetchOrganization)
+  const currentOrganization = useOrganizationStore((state) => state.currentOrganization)
   const [isOrganizationMenuOpen, setIsOrganizationMenuOpen] = useState(false)
   const [isJobPopUpOpen, setIsJobPopUpOpen] = useState(false)
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false)
@@ -58,11 +59,16 @@ const Navbar = () => {
       return
     }
 
+    if (currentOrganization && currentOrganization.id === activeOrgId) {
+      setActiveOrgName(currentOrganization.name)
+      return
+    }
+
     void (async () => {
       try {
-        const res = await getOrganizationById(activeOrgId, accessToken)
+        const org = await fetchOrganization(activeOrgId, accessToken)
         if (!isMounted) return
-        setActiveOrgName(res.organization?.name ?? '')
+        setActiveOrgName(org?.name ?? '')
       } catch {
         if (!isMounted) return
         setActiveOrgName('')
@@ -72,7 +78,7 @@ const Navbar = () => {
     return () => {
       isMounted = false
     }
-  }, [accessToken, activeOrgId])
+  }, [accessToken, activeOrgId, fetchOrganization, currentOrganization])
 
   useEffect(() => {
     setIsMobileNavOpen(false)

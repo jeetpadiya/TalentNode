@@ -1,19 +1,19 @@
-import { useEffect, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuthStore } from '../../../app/store/AuthStore'
-import { getJobs, updateJobStatus, type Job } from '../services/JobServices'
+import { updateJobStatus, type Job } from '../services/JobServices'
 import { toast } from '../../../app/ui/toast'
 import DensityToggle from '../../../components/common/DensityToggle'
 import { useDensity } from '../../../components/common/useDensity'
+import { useJobsQuery, useInvalidateTalentQueries } from '../../../hooks/useTalentQueries'
 
-
+import { Plus } from 'lucide-react'
+import JobPopUp from '../components/JobPopUp'
 
 const formatLabel = (value: string) => value.replace(/_/g, ' ')
 
-
 const formatDepartment = (raw: string | null | undefined) => {
   if (!raw) return ''
-  // backend may store "{id}|{name}" for job category
   if (raw.includes('|')) {
     const parts = raw.split('|')
     const name = parts.slice(1).join('|').trim()
@@ -25,53 +25,31 @@ const formatDepartment = (raw: string | null | undefined) => {
 const JobsPage = () => {
   const [density] = useDensity('jobs')
   const { organizationId } = useParams()
+  const user = useAuthStore((state) => state.user)
   const accessToken = useAuthStore((state) => state.accessToken)
   const navigate = useNavigate()
-  const [jobs, setJobs] = useState<Job[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { invalidateJobs } = useInvalidateTalentQueries()
+  const [isJobPopUpOpen, setIsJobPopUpOpen] = useState(false)
 
-  useEffect(() => {
-    let isMounted = true
+  const canCreateJobs = user?.role === 'admin' || user?.role === 'recruiter'
 
-    const loadJobs = async () => {
-      if (!accessToken) {
-        setError('You need to login first.')
-        setIsLoading(false)
-        return
-      }
+  const {
+    data: fetchedJobs = [],
+    isLoading,
+    error: queryError,
+  } = useJobsQuery(organizationId, accessToken)
 
-      try {
-        const response = await getJobs(accessToken)
+  const [localStatusOverrides, setLocalStatusOverrides] = useState<Record<string, 'open' | 'paused'>>({})
+  const [actionError, setActionError] = useState<string | null>(null)
 
-        if (isMounted) {
-          setJobs(response)
-          setError(null)
-        }
-      } catch (caughtError) {
-        const message =
-          typeof caughtError === 'object' &&
-          caughtError !== null &&
-          'message' in caughtError
-            ? String(caughtError.message)
-            : 'Could not load jobs.'
+  const jobs = useMemo(() => {
+    return fetchedJobs.map((j) => {
+      const override = localStatusOverrides[j.id]
+      return override ? { ...j, status: override } : j
+    })
+  }, [fetchedJobs, localStatusOverrides])
 
-        if (isMounted) {
-          setError(message)
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false)
-        }
-      }
-    }
-
-    void loadJobs()
-
-    return () => {
-      isMounted = false
-    }
-  }, [accessToken])
+  const error = queryError ? 'Could not load jobs.' : actionError
 
   const handleToggleStatus = async (e: React.MouseEvent, job: Job) => {
     e.stopPropagation()
@@ -80,22 +58,22 @@ const JobsPage = () => {
     if (!accessToken) return
 
     const newStatus = job.status === 'open' ? 'paused' : 'open'
-    
-    // Optimistic update
-    setJobs((prev) =>
-      prev.map((j) => (j.id === job.id ? { ...j, status: newStatus } : j)),
-    )
+
+    // Optimistic override
+    setLocalStatusOverrides((prev) => ({ ...prev, [job.id]: newStatus }))
 
     try {
       await updateJobStatus(job.id, newStatus, accessToken)
       toast.success(`Job ${newStatus === 'open' ? 'opened' : 'paused'}`)
+      void invalidateJobs(organizationId)
     } catch (err) {
-      // Revert on error
-      setJobs((prev) =>
-        prev.map((j) => (j.id === job.id ? { ...j, status: job.status } : j)),
-      )
+      setLocalStatusOverrides((prev) => {
+        const copy = { ...prev }
+        delete copy[job.id]
+        return copy
+      })
       console.error('Failed to update job status:', err)
-      setError('Failed to update job status. Please try again.')
+      setActionError('Failed to update job status. Please try again.')
       toast.error('Failed to update job status')
     }
   }
@@ -109,6 +87,16 @@ const JobsPage = () => {
             Manage job openings and hiring requirements.
           </p>
         </div>
+        {canCreateJobs ? (
+          <button
+            type="button"
+            onClick={() => setIsJobPopUpOpen(true)}
+            className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-800 transition-colors"
+          >
+            <Plus className="h-4 w-4" aria-hidden />
+            Create a Job
+          </button>
+        ) : null}
       </div>
 
       {isLoading ? (
@@ -150,86 +138,105 @@ const JobsPage = () => {
       ) : null}
 
       {!isLoading && !error && jobs.length === 0 ? (
-        <div className="card border-dashed p-8 text-center">
+        <div className="card border-dashed p-8 text-center flex flex-col items-center justify-center">
           <h2 className="text-lg font-semibold text-gray-900">No jobs yet</h2>
           <p className="mt-2 text-sm text-gray-600">
-            Use the Create a Job button in the navbar to start a draft.
+            Create your first job opening to start receiving and reviewing candidates.
           </p>
+          {canCreateJobs ? (
+            <button
+              type="button"
+              onClick={() => setIsJobPopUpOpen(true)}
+              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-800 transition-colors"
+            >
+              <Plus className="h-4 w-4" aria-hidden />
+              Create a Job
+            </button>
+          ) : null}
         </div>
       ) : null}
 
-      <div className="mt-4 flex items-start justify-between gap-3">
-        <DensityToggle densityKey="jobs" />
-      </div>
-      <div className="mt-4 grid gap-4">
-        {jobs.map((job) => (
-          <article
-            key={job.id}
-            role="button"
-            tabIndex={0}
-            onClick={() =>
-              navigate(`/organizations/${organizationId}/jobs/${job.id}/setup`)
-            }
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault()
-                navigate(`/organizations/${organizationId}/jobs/${job.id}/setup`)
-              }
-            }}
-            className={`card text-left hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600/30 ${density === 'compact' ? 'p-3' : 'p-5'}`}
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">
-                  {job.title}
-                </h2>
-                <p className="mt-1 text-sm text-gray-600">
-                  {[formatDepartment(job.department), job.location]
-                    .filter(Boolean)
-                    .join(' / ') ||
-                    'Details not added'}
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium capitalize text-gray-700">
-                  {formatLabel(job.status)}
-                </span>
-                
-                <button
-                  type="button"
-                  onClick={(e) => handleToggleStatus(e, job)}
-                  className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 ${
-                    job.status === 'open' ? 'bg-blue-600' : 'bg-gray-200'
-                  }`}
-                  role="switch"
-                  aria-checked={job.status === 'open'}
-                  title={`Toggle to ${job.status === 'open' ? 'pause' : 'open'}`}
-                >
-                  <span className="sr-only">Toggle job active status</span>
-                  <span
-                    aria-hidden="true"
-                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                      job.status === 'open' ? 'translate-x-5' : 'translate-x-0'
-                    }`}
-                  />
-                </button>
-              </div>
-            </div>
+      {jobs.length > 0 ? (
+        <>
+          <div className="mt-4 flex items-start justify-between gap-3">
+            <DensityToggle densityKey="jobs" />
+          </div>
+          <div className="mt-4 grid gap-4">
+            {jobs.map((job) => (
+              <article
+                key={job.id}
+                role="button"
+                tabIndex={0}
+                onClick={() =>
+                  navigate(`/organizations/${organizationId}/jobs/${job.id}/setup`)
+                }
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    navigate(`/organizations/${organizationId}/jobs/${job.id}/setup`)
+                  }
+                }}
+                className={`card text-left hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600/30 ${density === 'compact' ? 'p-3' : 'p-5'}`}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900">
+                      {job.title}
+                    </h2>
+                    <p className="mt-1 text-sm text-gray-600">
+                      {[formatDepartment(job.department), job.location]
+                        .filter(Boolean)
+                        .join(' / ') ||
+                        'Details not added'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium capitalize text-gray-700">
+                      {formatLabel(job.status)}
+                    </span>
+                    
+                    <button
+                      type="button"
+                      onClick={(e) => handleToggleStatus(e, job)}
+                      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 ${
+                        job.status === 'open' ? 'bg-blue-600' : 'bg-gray-200'
+                      }`}
+                      role="switch"
+                      aria-checked={job.status === 'open'}
+                      title={`Toggle to ${job.status === 'open' ? 'pause' : 'open'}`}
+                    >
+                      <span className="sr-only">Toggle job active status</span>
+                      <span
+                        aria-hidden="true"
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                          job.status === 'open' ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
 
-            <div className="mt-4 flex flex-wrap gap-2 text-xs font-medium capitalize text-gray-600">
-              <span className="rounded-md bg-gray-100 px-2 py-1">
-                {formatLabel(job.employmentType)}
-              </span>
-              <span className="rounded-md bg-gray-100 px-2 py-1">
-                {job.workMode}
-              </span>
-              <span className="rounded-md bg-gray-100 px-2 py-1">
-                {job.experienceLevel}
-              </span>
-            </div>
-          </article>
-        ))}
-      </div>
+                <div className="mt-4 flex flex-wrap gap-2 text-xs font-medium capitalize text-gray-600">
+                  <span className="rounded-md bg-gray-100 px-2 py-1">
+                    {formatLabel(job.employmentType)}
+                  </span>
+                  <span className="rounded-md bg-gray-100 px-2 py-1">
+                    {job.workMode}
+                  </span>
+                  <span className="rounded-md bg-gray-100 px-2 py-1">
+                    {job.experienceLevel}
+                  </span>
+                </div>
+              </article>
+            ))}
+          </div>
+        </>
+      ) : null}
+
+      <JobPopUp
+        isOpen={isJobPopUpOpen}
+        onClose={() => setIsJobPopUpOpen(false)}
+      />
     </section>
   )
 }

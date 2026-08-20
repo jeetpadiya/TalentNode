@@ -13,6 +13,7 @@
     "backfill:application-ids": "tsx src/scripts/backfillCandidateApplicationIds.ts"
   },
   "dependencies": {
+    "@sendgrid/mail": "^8.1.6",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",

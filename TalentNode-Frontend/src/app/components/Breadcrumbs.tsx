@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { useAuthStore } from "../store/AuthStore";
-import { getOrganizationById } from "../../features/organization/services/organizationService";
+import { useOrganizationStore } from "../store/OrganizationStore";
 import { getJobById } from "../../features/jobs/services/JobServices";
 
 type Crumb = { label: string; href?: string };
@@ -15,6 +15,8 @@ const Breadcrumbs = () => {
   const { organizationId, jobId } = useParams();
   const location = useLocation();
   const accessToken = useAuthStore((s) => s.accessToken);
+  const fetchOrganization = useOrganizationStore((s) => s.fetchOrganization);
+  const currentOrganization = useOrganizationStore((s) => s.currentOrganization);
 
   const [orgName, setOrgName] = useState<string>("");
   const [jobTitle, setJobTitle] = useState<string>("");
@@ -23,11 +25,16 @@ const Breadcrumbs = () => {
     let isMounted = true;
     if (!accessToken || !organizationId) return;
 
+    if (currentOrganization && currentOrganization.id === organizationId) {
+      setOrgName(currentOrganization.name);
+      return;
+    }
+
     void (async () => {
       try {
-        const res = await getOrganizationById(organizationId, accessToken);
+        const org = await fetchOrganization(organizationId, accessToken);
         if (!isMounted) return;
-        setOrgName(res.organization?.name ?? "");
+        setOrgName(org?.name ?? "");
       } catch {
         if (!isMounted) return;
         setOrgName("");
@@ -37,7 +44,7 @@ const Breadcrumbs = () => {
     return () => {
       isMounted = false;
     };
-  }, [accessToken, organizationId]);
+  }, [accessToken, organizationId, fetchOrganization, currentOrganization]);
 
   useEffect(() => {
     let isMounted = true;

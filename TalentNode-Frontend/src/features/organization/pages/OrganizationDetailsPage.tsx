@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useAuthStore } from '../../../app/store/AuthStore'
+import { useOrganizationStore } from '../../../app/store/OrganizationStore'
 import type { Organization } from '../services/organizationSchemas'
-import { getOrganizationById } from '../services/organizationService'
 
 const OrganizationDetailsPage = () => {
   const { organizationId } = useParams()
   const accessToken = useAuthStore((state) => state.accessToken)
+  const fetchOrganization = useOrganizationStore((state) => state.fetchOrganization)
+  const currentOrganization = useOrganizationStore((state) => state.currentOrganization)
   const [organization, setOrganization] = useState<Organization | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -21,11 +23,18 @@ const OrganizationDetailsPage = () => {
         return
       }
 
+      if (currentOrganization && currentOrganization.id === organizationId) {
+        setOrganization(currentOrganization)
+        setError(null)
+        setIsLoading(false)
+        return
+      }
+
       try {
-        const response = await getOrganizationById(organizationId, accessToken)
+        const org = await fetchOrganization(organizationId, accessToken)
 
         if (isMounted) {
-          setOrganization(response.organization)
+          setOrganization(org)
           setError(null)
         }
       } catch (caughtError) {
@@ -51,7 +60,7 @@ const OrganizationDetailsPage = () => {
     return () => {
       isMounted = false
     }
-  }, [accessToken, organizationId])
+  }, [accessToken, organizationId, fetchOrganization, currentOrganization])
 
   if (isLoading) {
     return <p className="text-sm text-gray-600">Loading organization...</p>

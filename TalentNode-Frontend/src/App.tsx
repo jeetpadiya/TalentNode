@@ -34,9 +34,12 @@ import ProfilePage from './features/settings/pages/ProfilePage'
 import AccountSettingsPage from './features/settings/pages/AccountSettingsPage'
 
 
+import { QueryClientProvider } from '@tanstack/react-query'
+import { queryClient } from './lib/queryClient'
+
 const App = () => {
   return (
-    <>
+    <QueryClientProvider client={queryClient}>
       <Toaster richColors position="top-right" closeButton />
       <BrowserRouter>
         <Routes>
@@ -148,7 +151,7 @@ const App = () => {
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </BrowserRouter>
-    </>
+    </QueryClientProvider>
   )
 }
 

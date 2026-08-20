@@ -75,9 +75,6 @@ export const sendOrganizationInviteEmail = async (
     secure: process.env.SMTP_SECURE,
   })
 
-  // transporter.verify() can fail in container/hosting environments due to transient
-  // DNS/network restrictions. Sending the email is the real goal.
-  // Still keep a short verify attempt and don’t block request on failure.
   try {
     await transporter.verify()
     console.log('SMTP verified successfully (invite)')
