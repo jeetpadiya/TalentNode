@@ -8,6 +8,8 @@ import {
   registerUser,
 } from '../../features/auth/services/authService'
 import { userSchema } from '../../features/auth/services/authSchemas'
+import { isTokenExpired } from '../../utils/jwt'
+import { queryClient } from '../../lib/queryClient'
 import type { ApiErrorResponse, AuthStore, User } from '../../types/types'
 
 type PersistedAuthState = {
@@ -21,7 +23,7 @@ const persistedAuthSchema = z.object({
 })
 
 const getIsAuthenticated = (user: User | null, accessToken: string | null) =>
-  Boolean(user && accessToken)
+  Boolean(user && accessToken && !isTokenExpired(accessToken))
 
 const getErrorMessage = (error: unknown) => {
   if (typeof error === 'object' && error !== null && 'message' in error) {
@@ -42,11 +44,12 @@ export const useAuthStore = create<AuthStore>()(
 
       setAuth: (user, token) => {
         const parsedUser = userSchema.parse(user)
+        const isAuth = getIsAuthenticated(parsedUser, token)
 
         set({
-          user: parsedUser,
-          accessToken: token,
-          isAuthenticated: getIsAuthenticated(parsedUser, token),
+          user: isAuth ? parsedUser : null,
+          accessToken: isAuth ? token : null,
+          isAuthenticated: isAuth,
           error: null,
         })
       },
@@ -118,12 +121,9 @@ export const useAuthStore = create<AuthStore>()(
       fetchProfile: async () => {
         const { accessToken } = get()
 
-        if (!accessToken) {
+        if (!accessToken || isTokenExpired(accessToken)) {
+          get().logout()
           set({
-            user: null,
-            accessToken: null,
-            isAuthenticated: false,
-            isLoading: false,
             error: 'You need to login first.',
           })
           return
@@ -142,11 +142,8 @@ export const useAuthStore = create<AuthStore>()(
             error: null,
           })
         } catch (error) {
+          get().logout()
           set({
-            user: null,
-            accessToken: null,
-            isAuthenticated: false,
-            isLoading: false,
             error: getErrorMessage(error),
           })
           throw error
@@ -158,6 +155,16 @@ export const useAuthStore = create<AuthStore>()(
       },
 
       logout: () => {
+        try {
+          localStorage.removeItem('talentnode-auth')
+        } catch {
+          // ignore
+        }
+        try {
+          queryClient.clear()
+        } catch {
+          // ignore
+        }
         set({
           user: null,
           accessToken: null,
@@ -178,10 +185,30 @@ export const useAuthStore = create<AuthStore>()(
         const parsedState = persistedAuthSchema.safeParse(persistedState)
 
         if (!parsedState.success) {
+          try {
+            localStorage.removeItem('talentnode-auth')
+          } catch {
+            // ignore
+          }
           return currentState
         }
 
         const { user, accessToken } = parsedState.data
+
+        // If accessToken is missing or expired, invalidate session immediately
+        if (!accessToken || isTokenExpired(accessToken)) {
+          try {
+            localStorage.removeItem('talentnode-auth')
+          } catch {
+            // ignore
+          }
+          return {
+            ...currentState,
+            user: null,
+            accessToken: null,
+            isAuthenticated: false,
+          }
+        }
 
         return {
           ...currentState,

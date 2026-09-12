@@ -13,7 +13,17 @@ export const queryClient = new QueryClient({
       refetchOnWindowFocus: false,
       refetchOnReconnect: false,
       refetchOnMount: false,
-      retry: 1,
+      retry: (failureCount, error) => {
+        if (
+          error &&
+          typeof error === 'object' &&
+          'status' in error &&
+          (error.status === 401 || error.status === 403 || error.status === 404)
+        ) {
+          return false
+        }
+        return failureCount < 1
+      },
     },
   },
 })

@@ -2,6 +2,8 @@ import { Navigate, Outlet, useParams } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { useAuthStore } from '../store/AuthStore'
 import { useOrganizationStore } from '../store/OrganizationStore'
+import { isTokenExpired } from '../../utils/jwt'
+import { handleSessionExpiry } from '../../lib/client'
 
 const OrganizationContextRoutes = () => {
   const { organizationId } = useParams()
@@ -19,7 +21,10 @@ const OrganizationContextRoutes = () => {
       setIsLoading(true)
       setIsValidOrganization(false)
 
-      if (!accessToken || !organizationId) {
+      if (!accessToken || !organizationId || isTokenExpired(accessToken)) {
+        if (accessToken && isTokenExpired(accessToken)) {
+          handleSessionExpiry()
+        }
         setIsValidOrganization(false)
         setIsLoading(false)
         return
@@ -35,6 +40,9 @@ const OrganizationContextRoutes = () => {
           setIsValidOrganization(true)
         }
       } catch {
+        if (accessToken && isTokenExpired(accessToken)) {
+          handleSessionExpiry()
+        }
         if (isMounted) {
           setIsValidOrganization(false)
         }
@@ -54,6 +62,10 @@ const OrganizationContextRoutes = () => {
 
   if (isLoading) {
     return <p className="text-sm text-gray-600">Loading organization...</p>
+  }
+
+  if (!accessToken || isTokenExpired(accessToken)) {
+    return <Navigate to="/login?sessionExpired=true" replace />
   }
 
   if (!isValidOrganization) {

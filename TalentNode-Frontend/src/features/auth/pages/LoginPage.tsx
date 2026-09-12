@@ -12,6 +12,12 @@ const LoginPage = () => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
 
+  const searchParams = new URLSearchParams(location.search)
+  const isSessionExpired =
+    Boolean((location.state as { sessionExpired?: boolean } | null)?.sessionExpired) ||
+    searchParams.get('sessionExpired') === 'true'
+  const redirectTarget = searchParams.get('redirect')
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
@@ -27,6 +33,7 @@ const LoginPage = () => {
     const user = useAuthStore.getState().user
     const from = (location.state as { from?: { pathname?: string } } | null)?.from
     navigate(
+      redirectTarget ??
       from?.pathname ??
       (user?.organizationId
         ? `/organizations/${user.organizationId}/dashboard`
@@ -41,6 +48,12 @@ const LoginPage = () => {
         <p className="mt-2 text-sm text-gray-600">
           Access your TalentNode workspace.
         </p>
+
+        {isSessionExpired ? (
+          <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+            Your session has expired. Please log in again to continue.
+          </div>
+        ) : null}
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           <label className="block">

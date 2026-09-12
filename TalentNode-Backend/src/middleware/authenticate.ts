@@ -38,8 +38,20 @@ export const authenticate = (req: Request, res: Response, next: NextFunction) =>
     req.user = identity;
     return next();
   } catch (error: unknown) {
+    if (error instanceof jwt.TokenExpiredError) {
+      return res.status(401).json({
+        success: false,
+        code: "TOKEN_EXPIRED",
+        message: "Token has expired.",
+      });
+    }
+
     console.error("Token verification failed:", error);
-    return res.status(401).json({ success: false, message: "Invalid token." });
+    return res.status(401).json({
+      success: false,
+      code: "INVALID_TOKEN",
+      message: "Invalid token.",
+    });
   }
 };
 

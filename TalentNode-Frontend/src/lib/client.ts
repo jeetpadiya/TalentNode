@@ -1,6 +1,54 @@
 import type { z } from 'zod'
+import { toast } from 'sonner'
 import { useAuthStore } from '../app/store/AuthStore'
+import { queryClient } from './queryClient'
+import { isTokenExpired } from '../utils/jwt'
 import type { ApiErrorResponse, ApiFieldError } from '../types/types'
+
+let isSessionExpiring = false
+
+/**
+ * Centrally handles session expiration across the application.
+ * Deduplicates multiple concurrent 401s, displays a notification,
+ * clears the TanStack query cache, wipes the auth store, and redirects to /login.
+ */
+export const handleSessionExpiry = (
+  reason: string = 'Your session has expired. Please log in again.',
+) => {
+  if (isSessionExpiring) return
+  isSessionExpiring = true
+
+  try {
+    toast.error(reason)
+  } catch {
+    // Sonner might not be available in headless context
+  }
+
+  try {
+    queryClient.clear()
+  } catch {
+    // ignore
+  }
+
+  // Clear Zustand auth store and persisted localStorage
+  useAuthStore.getState().logout()
+
+  // Safely redirect to /login if currently inside an authenticated route
+  const currentPath = window.location.pathname
+  const isAuthRoute =
+    currentPath.includes('/login') ||
+    currentPath.includes('/register') ||
+    currentPath.startsWith('/public/')
+
+  if (!isAuthRoute) {
+    const redirectParam = encodeURIComponent(currentPath + window.location.search)
+    window.location.replace(`/login?sessionExpired=true&redirect=${redirectParam}`)
+  }
+
+  setTimeout(() => {
+    isSessionExpiring = false
+  }, 2000)
+}
 
 /**
  * Standard API error class carrying status code, status text, and response details.
@@ -138,6 +186,16 @@ export class ApiClient {
         if (!config.skipAuth && !headers.has('Authorization')) {
           const token = useAuthStore.getState().accessToken
           if (token) {
+            if (isTokenExpired(token)) {
+              handleSessionExpiry('Your session has expired. Please log in again.')
+              return Promise.reject(
+                new ApiError(401, 'Unauthorized', {
+                  success: false,
+                  code: 'TOKEN_EXPIRED',
+                  message: 'Your session has expired. Please log in again.',
+                }),
+              )
+            }
             headers.set('Authorization', `Bearer ${token}`)
           }
         }
@@ -175,13 +233,19 @@ export class ApiClient {
       },
       onRejected: async (error) => {
         if (error instanceof ApiError) {
-          // Automatic logout on 401 Unauthorized for authenticated routes
+          // Automatic session expiration handling on 401 Unauthorized for authenticated routes
           if (error.status === 401) {
             const isAuthRoute =
               window.location.pathname.includes('/login') ||
               window.location.pathname.includes('/register')
             if (!isAuthRoute) {
-              useAuthStore.getState().logout()
+              const errorMessage =
+                typeof error.data === 'object' &&
+                error.data !== null &&
+                'message' in error.data
+                  ? String((error.data as { message: unknown }).message)
+                  : 'Your session has expired. Please log in again.'
+              handleSessionExpiry(errorMessage)
             }
           }
         }

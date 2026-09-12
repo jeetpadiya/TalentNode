@@ -72,9 +72,9 @@ export const checkUserEmailResponseSchema = z.object({
 })
 
 export type User = z.infer<typeof userSchema>
-export type RegisterUserInput = z.input<typeof registerUserSchema>
-export type LoginUserInput = z.input<typeof loginUserSchema>
-export type CheckUserEmailInput = z.input<typeof checkUserEmailSchema>
+export type RegisterUserInput = z.infer<typeof registerUserSchema>
+export type LoginUserInput = z.infer<typeof loginUserSchema>
+export type CheckUserEmailInput = z.infer<typeof checkUserEmailSchema>
 export type AuthResponse = z.infer<typeof authResponseSchema>
 export type ProfileResponse = z.infer<typeof profileResponseSchema>
 export type CheckUserEmailResponse = z.infer<

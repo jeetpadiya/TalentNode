@@ -12,6 +12,7 @@ import ProtectedRoutes from './app/routes/ProtectedRoutes'
 import PublicRoutes from './app/routes/PublicRoutes'
 import RequireRole from './app/routes/RequireRole'
 import PageLoader from './components/common/PageLoader'
+import { useSessionExpiryMonitor } from './hooks/useSessionExpiryMonitor'
 
 // ----------------------------------------------------------------------------
 // LAZY LOADED ROUTE COMPONENTS (CODE SPLITTING)
@@ -50,6 +51,8 @@ const SettingPage = lazy(() => import('./features/settings/pages/SettingPage'))
 const UserPreferencesPage = lazy(() => import('./features/settings/pages/UserPreferencesPage'))
 
 const App = () => {
+  useSessionExpiryMonitor()
+
   return (
     <QueryClientProvider client={queryClient}>
       <Toaster richColors position="top-right" closeButton />
