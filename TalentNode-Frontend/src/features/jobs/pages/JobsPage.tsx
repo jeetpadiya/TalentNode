@@ -1,11 +1,15 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuthStore } from '../../../app/store/AuthStore'
-import { updateJobStatus, type Job } from '../services/JobServices'
+import type { Job } from '../../../types/apiTypes'
 import { toast } from '../../../app/ui/toast'
 import DensityToggle from '../../../components/common/DensityToggle'
 import { useDensity } from '../../../components/common/useDensity'
-import { useJobsQuery, useInvalidateTalentQueries } from '../../../hooks/useTalentQueries'
+import {
+  useJobsQuery,
+  useUpdateJobStatusMutation,
+  useInvalidateTalentQueries,
+} from '../../../hooks/useTalentQueries'
 
 import { Plus } from 'lucide-react'
 import JobPopUp from '../components/JobPopUp'
@@ -39,6 +43,8 @@ const JobsPage = () => {
     error: queryError,
   } = useJobsQuery(organizationId, accessToken)
 
+  const updateJobStatusMutation = useUpdateJobStatusMutation()
+
   const [localStatusOverrides, setLocalStatusOverrides] = useState<Record<string, 'open' | 'paused'>>({})
   const [actionError, setActionError] = useState<string | null>(null)
 
@@ -63,7 +69,7 @@ const JobsPage = () => {
     setLocalStatusOverrides((prev) => ({ ...prev, [job.id]: newStatus }))
 
     try {
-      await updateJobStatus(job.id, newStatus, accessToken)
+      await updateJobStatusMutation.mutateAsync({ id: job.id, status: newStatus })
       toast.success(`Job ${newStatus === 'open' ? 'opened' : 'paused'}`)
       void invalidateJobs(organizationId)
     } catch (err) {

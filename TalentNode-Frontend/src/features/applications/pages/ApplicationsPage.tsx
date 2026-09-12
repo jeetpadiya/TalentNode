@@ -5,18 +5,17 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
 import { useAuthStore } from '../../../app/store/AuthStore'
 import type { ApplicationStage } from '../services/ApplicationServices'
-import {
-  moveApplicationToHiringStage,
-} from '../services/ApplicationServices'
 import type { Candidate } from '../../candidates/services/CandidateSchema'
 import JobPipeline from '../components/JobPipeline'
 import CandidateList from '../components/CandidateList'
 import CandidateDetails from '../components/CandidateDetails'
 
+import {
+  useApplicationsQuery,
+  useMoveApplicationStageMutation,
+  useInvalidateTalentQueries,
+} from '../../../hooks/useTalentQueries'
 
-
-
-import { useApplicationsQuery, useInvalidateTalentQueries } from '../../../hooks/useTalentQueries'
 
 const ApplicationsPage = () => {
   const accessToken = useAuthStore((state) => state.accessToken)
@@ -47,7 +46,8 @@ const ApplicationsPage = () => {
   useEffect(() => {
     if (stages.length === 0) return
     if (stages.some((s) => s.id === activeStageId)) return
-    setActiveStageId(stages[0]?.id ?? '')
+    const firstStageWithCandidates = stages.find((s) => (s.candidates?.length ?? 0) > 0)
+    setActiveStageId(firstStageWithCandidates?.id ?? stages[0]?.id ?? '')
   }, [stages, activeStageId])
 
   const activeStage = useMemo(
@@ -131,9 +131,10 @@ const ApplicationsPage = () => {
     })
   }
 
+  const moveApplicationMutation = useMoveApplicationStageMutation()
+
   const handleMoveCandidate = async () => {
     if (
-      !accessToken ||
       !selectedJobId ||
       !selectedCandidate?.applicationId ||
       !moveTargetStageId
@@ -145,22 +146,21 @@ const ApplicationsPage = () => {
     setMoveError(null)
 
     try {
-      await moveApplicationToHiringStage(
-        selectedJobId,
-        selectedCandidate.applicationId,
-        moveTargetStageId,
-        accessToken,
-      )
+      await moveApplicationMutation.mutateAsync({
+        jobId: selectedJobId,
+        applicationId: selectedCandidate.applicationId,
+        hiringStageId: moveTargetStageId,
+      })
 
       void invalidateApplications(organizationId, selectedJobId)
       setLocalStages(null)
       setActiveStageId(moveTargetStageId)
       setSelectedCandidateId(selectedCandidate._id)
       setMoveTargetStageId('')
-    } catch (error) {
+    } catch (error: any) {
       setMoveError(
         typeof error === 'object' && error !== null && 'message' in error
-          ? String((error as { message?: unknown }).message)
+          ? String(error.message)
           : 'Could not move application.',
       )
     } finally {

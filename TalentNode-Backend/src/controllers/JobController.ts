@@ -30,7 +30,11 @@ const serializeHiringStages = (job: any) => {
         }));
 };
 
-const serializeJob = (job: any, departmentName: string | null = null) => ({
+const serializeJob = (
+    job: any,
+    departmentName: string | null = null,
+    includeStages: boolean = true,
+) => ({
     id: job._id,
     title: job.title,
     // Backward compatible field (stored string)
@@ -58,7 +62,7 @@ const serializeJob = (job: any, departmentName: string | null = null) => ({
     organizationId: job.organizationId,
     createdBy: job.createdBy,
     hiringManagerId: job.hiringManagerId ?? null,
-    hiringStages: serializeHiringStages(job),
+    ...(includeStages ? { hiringStages: serializeHiringStages(job) } : {}),
     createdAt: job.createdAt,
     updatedAt: job.updatedAt,
 });
@@ -139,11 +143,13 @@ const getJobs = async (req: Request, res: Response) => {
 
         const jobFilter = await getAccessibleJobFilterForUser(userId, String(organizationId));
 
-        const jobs = await JobsModel.find(jobFilter).sort({ createdAt: -1 });
+        const jobs = await JobsModel.find(jobFilter)
+            .select("-hiringStages")
+            .sort({ createdAt: -1 });
 
         return res.status(200).json({
             success: true,
-            jobs: jobs.map((j) => serializeJob(j, null)),
+            jobs: jobs.map((j) => serializeJob(j, null, false)),
         });
     } catch (error) {
         console.error("Error fetching jobs:", error);

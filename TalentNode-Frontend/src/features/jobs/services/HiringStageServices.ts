@@ -1,7 +1,7 @@
 import type { ApiErrorResponse } from "../../../types/types";
 import { z } from "zod";
 
-import { hiringStageSchema, type Job } from "./JobSchema";
+import { hiringStageSchema } from "./JobSchema";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5000/api";
@@ -24,7 +24,7 @@ const hiringStagesResponseSchema = z.object({
   hiringStages: z.array(hiringStageSchema),
 });
 
-export type HiringStage = Job["hiringStages"][number];
+export type HiringStage = z.infer<typeof hiringStageSchema>;
 
 export type SaveHiringPipelineInput = {
   id?: string;

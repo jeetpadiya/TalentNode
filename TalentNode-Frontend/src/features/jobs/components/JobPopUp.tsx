@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../../app/store/AuthStore'
-import { createJob } from '../services/JobServices'
+import { useCreateJobMutation } from '../../../hooks/useTalentQueries'
 
 type JobPopUpProps = {
   isOpen: boolean
@@ -11,10 +11,11 @@ type JobPopUpProps = {
 const JobPopUp = ({ isOpen, onClose }: JobPopUpProps) => {
   const accessToken = useAuthStore((state) => state.accessToken)
   const [title, setTitle] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const location = useLocation()
   const navigate = useNavigate()
+
+  const createJobMutation = useCreateJobMutation()
 
   const organizationId = location.pathname.match(
     /^\/organizations\/([^/]+)/,
@@ -28,27 +29,26 @@ const JobPopUp = ({ isOpen, onClose }: JobPopUpProps) => {
       return
     }
 
-    setIsSubmitting(true)
+    if (!title.trim()) {
+      setError('Job title is required.')
+      return
+    }
+
     setError(null)
 
     try {
-      const job = await createJob({ title }, accessToken)
+      const response = await createJobMutation.mutateAsync({ title: title.trim() })
+      const createdJob = response.job
       setTitle('')
       onClose()
       navigate(
-        `/organizations/${organizationId ?? job.organizationId}/jobs/${job.id}/setup`,
+        `/organizations/${organizationId ?? createdJob.organizationId}/jobs/${createdJob.id}/setup`,
       )
-    } catch (caughtError) {
+    } catch (caughtError: any) {
       const message =
-        typeof caughtError === 'object' &&
-        caughtError !== null &&
-        'message' in caughtError
-          ? String(caughtError.message)
-          : 'Could not create job.'
-
+        caughtError?.message ??
+        (typeof caughtError === 'string' ? caughtError : 'Could not create job.')
       setError(message)
-    } finally {
-      setIsSubmitting(false)
     }
   }
 
@@ -58,54 +58,58 @@ const JobPopUp = ({ isOpen, onClose }: JobPopUpProps) => {
     <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/40 px-4">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl"
+        className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
       >
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">
-              Create new job
-            </h2>
-            <p className="mt-1 text-sm text-gray-600">
-              Add a title now, then complete the job setup next.
-            </p>
-          </div>
+        <div className="flex items-center justify-between border-b pb-3">
+          <h2 className="text-lg font-semibold text-gray-900">Create New Job</h2>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md px-2 py-1 text-sm font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+            className="text-gray-400 hover:text-gray-600"
           >
-            X
+            ✕
           </button>
         </div>
 
-        <label className="mt-5 block">
-          <span className="text-sm font-medium text-gray-700">Job title</span>
+        {error && (
+          <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">
+            {error}
+          </div>
+        )}
+
+        <div className="mt-4">
+          <label
+            htmlFor="job-title"
+            className="block text-sm font-medium text-gray-700"
+          >
+            Job Title
+          </label>
           <input
+            id="job-title"
             type="text"
             value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            placeholder="Frontend Engineer"
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 outline-none focus:border-gray-900"
-            required
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="e.g. Senior Frontend Engineer"
+            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm outline-none focus:border-black focus:ring-1 focus:ring-black"
+            autoFocus
           />
-        </label>
+        </div>
 
-        {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
-
-        <div className="mt-6 flex justify-end gap-2">
+        <div className="mt-6 flex justify-end gap-3">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            disabled={createJobMutation.isPending}
+            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             type="submit"
-            disabled={isSubmitting}
-            className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={createJobMutation.isPending}
+            className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
           >
-            {isSubmitting ? 'Creating...' : 'Create job'}
+            {createJobMutation.isPending ? 'Creating...' : 'Create Job'}
           </button>
         </div>
       </form>

@@ -15,7 +15,9 @@ import messageTemplateRoutes from './routes/MessageTemplateRoutes.js'
 import reviewTemplateRoutes from './routes/ReviewTemplateRoutes.js'
 import jobCategoryRoutes from './routes/JobCategoryRoutes.js'
 import publicJobRoutes from './routes/PublicJobRoutes.js'
+import analyticsRoutes from './routes/AnalyticsRoutes.js'
 import { errorHandler } from './middleware/errorHandler.js'
+
 
 
 dotenv.config();
@@ -90,7 +92,9 @@ app.use('/api/candidates', candidate);
 app.use('/api/organizations/:organizationId/message-templates', messageTemplateRoutes);
 app.use('/api/organizations/:organizationId/review-templates', reviewTemplateRoutes);
 app.use('/api/organizations/:organizationId/job-categories', jobCategoryRoutes);
+app.use('/api/organizations/:organizationId/analytics', analyticsRoutes);
 app.use('/api/public', publicJobRoutes);
+
 
 // Central error handler (must be last)
 app.use(errorHandler);

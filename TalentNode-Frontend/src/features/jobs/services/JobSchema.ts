@@ -32,8 +32,8 @@ export const jobSchema = z.object({
   createdBy: z.string().min(1),
   hiringManagerId: z.string().nullable(),
   hiringStages: z.preprocess(
-    (v) => (Array.isArray(v) ? v : []),
-    z.array(hiringStageSchema),
+    (v) => (Array.isArray(v) ? v : undefined),
+    z.array(hiringStageSchema).optional(),
   ),
   createdAt: z.string(),
   updatedAt: z.string(),

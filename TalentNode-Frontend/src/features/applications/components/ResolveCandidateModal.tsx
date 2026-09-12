@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { useAuthStore } from '../../../app/store/AuthStore';
-import { resolveApplication } from '../services/ApplicationServices';
+import { useResolveApplicationMutation } from '../../../hooks/useTalentQueries';
 
 type ResolveCandidateModalProps = {
   jobId: string;
@@ -20,31 +19,27 @@ const ResolveCandidateModal = ({
   const [status, setStatus] = useState<'hired' | 'rejected' | 'withdrawn'>('rejected');
   const [rejectionReason, setRejectionReason] = useState('');
   const [sendEmail, setSendEmail] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const accessToken = useAuthStore((s) => s.accessToken);
+  const resolveMutation = useResolveApplicationMutation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!accessToken) return;
-
-    setLoading(true);
     setError(null);
 
     try {
-      await resolveApplication({
+      await resolveMutation.mutateAsync({
         jobId,
         applicationId,
-        status,
-        rejectionReason: status === 'rejected' ? rejectionReason : undefined,
-        sendEmail: status === 'rejected' ? sendEmail : undefined,
-        accessToken,
+        input: {
+          status,
+          rejectionReason: status === 'rejected' ? rejectionReason : undefined,
+          sendEmail: status === 'rejected' ? sendEmail : undefined,
+        },
       });
       onResolved();
     } catch (err: any) {
-      setError(err.message || 'Failed to resolve candidate');
-      setLoading(false);
+      setError(err?.message || 'Failed to resolve candidate');
     }
   };
 
@@ -62,67 +57,67 @@ const ResolveCandidateModal = ({
           </div>
         )}
 
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Resolution Status
+              Resolution Outcome
             </label>
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value as any)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             >
-              <option value="rejected">Reject</option>
-              <option value="hired">Hire</option>
-              <option value="withdrawn">Withdrawn (by candidate)</option>
+              <option value="rejected">Rejected</option>
+              <option value="hired">Hired</option>
+              <option value="withdrawn">Withdrawn by Candidate</option>
             </select>
           </div>
 
           {status === 'rejected' && (
-            <div className="mb-6 space-y-4">
+            <>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Rejection Reason (Internal)
+                  Rejection Reason (Internal Note)
                 </label>
                 <textarea
                   value={rejectionReason}
                   onChange={(e) => setRejectionReason(e.target.value)}
+                  placeholder="e.g. Lacks required system design experience..."
                   rows={3}
-                  placeholder="e.g. Not enough experience, failed technical round..."
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                  className="w-full rounded-lg border border-gray-300 p-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                 />
               </div>
+
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
                   id="sendEmail"
                   checked={sendEmail}
                   onChange={(e) => setSendEmail(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-300 text-gray-900 focus:ring-gray-900"
+                  className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                 />
-                <label htmlFor="sendEmail" className="text-sm font-medium text-gray-700">
-                  Send automated rejection email to candidate
+                <label htmlFor="sendEmail" className="text-sm text-gray-700 select-none">
+                  Send standard rejection notification email to candidate
                 </label>
               </div>
-            </div>
+            </>
           )}
 
-          <div className="flex justify-end gap-3 mt-8">
+          <div className="mt-6 flex justify-end gap-3 pt-4 border-t">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+              disabled={resolveMutation.isPending}
+              className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
             >
               Cancel
             </button>
             <button
               type="submit"
-              disabled={loading}
-              className={`rounded-lg px-4 py-2 text-sm font-medium text-white ${
-                status === 'hired' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'
-              }`}
+              disabled={resolveMutation.isPending}
+              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50"
             >
-              {loading ? 'Saving...' : status === 'hired' ? 'Hire Candidate' : 'Reject Candidate'}
+              {resolveMutation.isPending ? 'Resolving...' : 'Confirm Resolution'}
             </button>
           </div>
         </form>

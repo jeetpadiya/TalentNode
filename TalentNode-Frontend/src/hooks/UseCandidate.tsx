@@ -1,236 +1,214 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, useRef, type FormEvent } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { useAuthStore } from '../app/store/AuthStore'
-import { getJobs } from '../features/jobs/services/JobServices'
-import type {Job as OrgJob} from '../features/jobs/services/JobSchema'
-
 import {
-    createCandidate,
-    getCandidatesForJob,
-    type Candidate,
-} from '../features/candidates/services/CandidateServices'
+  useJobsQuery,
+  useJobCandidatesQuery,
+  useCreateCandidateMutation,
+} from './useTalentQueries'
+import type { Candidate, Job as OrgJob } from '../types/apiTypes'
 
 export const SOURCE_OPTIONS = [
-    '',
-    'LinkedIn',
-    'Referral',
-    'Website',
-    'Naukri',
-    'Other',
+  '',
+  'LinkedIn',
+  'Referral',
+  'Website',
+  'Naukri',
+  'Other',
 ] as const
 
 export type SourceOption = (typeof SOURCE_OPTIONS)[number]
 
 export const useCandidates = () => {
-    const { organizationId } = useParams()
-    const accessToken = useAuthStore((state) => state.accessToken)
-    const [searchParams, setSearchParams] = useSearchParams()
+  const { organizationId } = useParams()
+  const accessToken = useAuthStore((state) => state.accessToken)
+  const [searchParams, setSearchParams] = useSearchParams()
 
-    const dashboardHref = organizationId
-        ? `/organizations/${organizationId}/dashboard`
-        : '/dashboard'
+  const dashboardHref = organizationId
+    ? `/organizations/${organizationId}/dashboard`
+    : '/dashboard'
 
-    const selectedJobId =
+  const selectedJobId =
+    searchParams.get('job')?.trim() ||
+    searchParams.get('fromJob')?.trim() ||
+    ''
+
+  // 1. Fetch organization's jobs using TanStack Query
+  const { data: jobs = [], isLoading: jobsLoading } = useJobsQuery(
+    organizationId,
+    accessToken,
+  )
+  const hasAutoSelectedRef = useRef(false)
+
+  // 2. Fetch candidates for currently selected job using TanStack Query
+  const {
+    data: candidates = [],
+    isLoading: listLoading,
+    error: listQueryError,
+  } = useJobCandidatesQuery(organizationId, selectedJobId, accessToken)
+
+  // 3. Mutation for creating and linking candidate
+  const createCandidateMutation = useCreateCandidateMutation()
+
+  const [showAddPanel, setShowAddPanel] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<{ field: string; message: string }[]>([])
+  const [saveSucceeded, setSaveSucceeded] = useState(false)
+
+  // Form Fields
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
+  const [skills, setSkills] = useState('')
+  const [experience, setExperience] = useState('')
+  const [currentCompany, setCurrentCompany] = useState('')
+  const [currentRole, setCurrentRole] = useState('')
+  const [tags, setTags] = useState('')
+  const [notes, setNotes] = useState('')
+  const [source, setSource] = useState<SourceOption>('')
+
+  const selectedJob = useMemo(
+    () => jobs.find((j) => j.id === selectedJobId) ?? null,
+    [jobs, selectedJobId],
+  )
+
+  // Sync add panel state from query parameters
+  useEffect(() => {
+    if (searchParams.get('add') !== '1') return
+    setShowAddPanel(true)
+    const next = new URLSearchParams(searchParams)
+    next.delete('add')
+    setSearchParams(next, { replace: true })
+  }, [searchParams, setSearchParams])
+
+  // Auto-select first job if none is currently selected in search params
+  useEffect(() => {
+    if (jobs.length > 0 && !hasAutoSelectedRef.current) {
+      const currentJobId =
         searchParams.get('job')?.trim() ||
         searchParams.get('fromJob')?.trim() ||
         ''
-
-    const [jobs, setJobs] = useState<OrgJob[]>([])
-    const [jobsLoading, setJobsLoading] = useState(true)
-
-    const [showAddPanel, setShowAddPanel] = useState(false)
-
-    const [candidates, setCandidates] = useState<Candidate[]>([])
-    const [listLoading, setListLoading] = useState(false)
-    const [listError, setListError] = useState<string | null>(null)
-    const [formError, setFormError] = useState<string | null>(null)
-    const [fieldErrors, setFieldErrors] = useState<
-        { field: string; message: string }[]
-    >([])
-    const [isSubmitting, setIsSubmitting] = useState(false)
-    const [saveSucceeded, setSaveSucceeded] = useState(false)
-
-    const [name, setName] = useState('')
-    const [email, setEmail] = useState('')
-    const [phone, setPhone] = useState('')
-    const [skills, setSkills] = useState('')
-    const [experience, setExperience] = useState('')
-    const [currentCompany, setCurrentCompany] = useState('')
-    const [currentRole, setCurrentRole] = useState('')
-    const [tags, setTags] = useState('')
-    const [notes, setNotes] = useState('')
-    const [source, setSource] = useState<SourceOption>('')
-
-    const selectedJob = useMemo(
-        () => jobs.find((j) => j.id === selectedJobId) ?? null,
-        [jobs, selectedJobId],
-    )
-
-    useEffect(() => {
-        if (searchParams.get('add') !== '1') return
-        setShowAddPanel(true)
+      if (!currentJobId || !jobs.some((j) => j.id === currentJobId)) {
+        hasAutoSelectedRef.current = true
         const next = new URLSearchParams(searchParams)
-        next.delete('add')
+        next.set('job', jobs[0].id)
+        next.delete('fromJob')
         setSearchParams(next, { replace: true })
-    }, [searchParams, setSearchParams])
+      }
+    }
+  }, [jobs, searchParams, setSearchParams])
 
-    useEffect(() => {
-        let mounted = true
-        void (async () => {
-            if (!accessToken) {
-                setJobsLoading(false)
-                return
-            }
-            try {
-                const list = await getJobs(accessToken)
-                if (mounted) setJobs(list)
-            } catch {
-                if (mounted) setJobs([])
-            } finally {
-                if (mounted) setJobsLoading(false)
-            }
-        })()
-        return () => { mounted = false }
-    }, [accessToken])
+  const setJobSelection = (jobId: string) => {
+    hasAutoSelectedRef.current = true
+    const next = new URLSearchParams(searchParams)
+    if (jobId) {
+      next.set('job', jobId)
+      next.delete('fromJob')
+    } else {
+      next.delete('job')
+      next.delete('fromJob')
+    }
+    setSearchParams(next, { replace: true })
+  }
 
-    const loadJobCandidates = async () => {
-        if (!accessToken || !selectedJobId) {
-            setCandidates([])
-            setListError(null)
-            setListLoading(false)
-            return
-        }
-        setListLoading(true)
-        setListError(null)
-        try {
-            const list = await getCandidatesForJob(selectedJobId, accessToken)
-            setCandidates(list)
-        } catch (caughtError) {
-            const message =
-                typeof caughtError === 'object' &&
-                caughtError !== null &&
-                'message' in caughtError
-                    ? String((caughtError as { message?: unknown }).message ?? 'Could not load candidates.')
-                    : 'Could not load candidates.'
-            setListError(message)
-            setCandidates([])
-        } finally {
-            setListLoading(false)
-        }
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setFormError(null)
+    setFieldErrors([])
+    setSaveSucceeded(false)
+
+    if (!accessToken) {
+      setFormError('You need to login first.')
+      return
+    }
+    if (!selectedJobId) {
+      setFormError('Select a job first so new candidates are tied to this role.')
+      return
     }
 
-    useEffect(() => {
-        void loadJobCandidates()
-    }, [accessToken, selectedJobId])
+    try {
+      await createCandidateMutation.mutateAsync({
+        name,
+        email,
+        phone: phone.trim() || undefined,
+        skills,
+        experience: experience.trim() || undefined,
+        currentCompany: currentCompany.trim() || undefined,
+        currentRole: currentRole.trim() || undefined,
+        tags,
+        notes,
+        source: source || undefined,
+        jobId: selectedJobId,
+      })
 
-    const setJobSelection = (jobId: string) => {
-        const next = new URLSearchParams(searchParams)
-        if (jobId) {
-            next.set('job', jobId)
-            next.delete('fromJob')
-        } else {
-            next.delete('job')
-            next.delete('fromJob')
-        }
-        setSearchParams(next, { replace: true })
+      // Reset form on success
+      setName('')
+      setEmail('')
+      setPhone('')
+      setSkills('')
+      setExperience('')
+      setCurrentCompany('')
+      setCurrentRole('')
+      setTags('')
+      setNotes('')
+      setSource('')
+      setSaveSucceeded(true)
+      setShowAddPanel(false)
+    } catch (caughtError: any) {
+      if (caughtError?.errors && Array.isArray(caughtError.errors)) {
+        setFieldErrors(caughtError.errors)
+      }
+      const message =
+        caughtError?.message ??
+        (typeof caughtError === 'string' ? caughtError : 'Could not create candidate.')
+      setFormError(message)
     }
+  }
 
-    const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-        event.preventDefault()
-        setFormError(null)
-        setFieldErrors([])
-        setSaveSucceeded(false)
+  const openAddPanel = () => {
+    setShowAddPanel(true)
+    setSaveSucceeded(false)
+    setFormError(null)
+    setFieldErrors([])
+  }
 
-        if (!accessToken) {
-            setFormError('You need to login first.')
-            return
-        }
-        if (!selectedJobId) {
-            setFormError('Select a job first so new candidates are tied to this role.')
-            return
-        }
+  const closeAddPanel = () => setShowAddPanel(false)
 
-        setIsSubmitting(true)
-        try {
-            await createCandidate(
-                { name, email, phone, skills, experience, currentCompany, currentRole, tags, notes, source },
-                accessToken,
-                { jobId: selectedJobId },
-            )
-            setName('')
-            setEmail('')
-            setPhone('')
-            setSkills('')
-            setExperience('')
-            setCurrentCompany('')
-            setCurrentRole('')
-            setTags('')
-            setNotes('')
-            setSource('')
-            setSaveSucceeded(true)
-            setShowAddPanel(false)
-            await loadJobCandidates()
-        } catch (caughtError) {
-            if (
-                typeof caughtError === 'object' &&
-                caughtError !== null &&
-                'errors' in caughtError &&
-                Array.isArray((caughtError as { errors: unknown }).errors)
-            ) {
-                setFieldErrors(
-                    (caughtError as { errors: { field: string; message: string }[] }).errors,
-                )
-            }
-            const message =
-                typeof caughtError === 'object' &&
-                caughtError !== null &&
-                'message' in caughtError
-                    ? String((caughtError as { message?: unknown }).message)
-                    : 'Could not create candidate.'
-            setFormError(message)
-        } finally {
-            setIsSubmitting(false)
-        }
-    }
+  const listError = listQueryError
+    ? listQueryError instanceof Error
+      ? listQueryError.message
+      : 'Could not load candidates.'
+    : null
 
-    const openAddPanel = () => {
-        setShowAddPanel(true)
-        setSaveSucceeded(false)
-        setFormError(null)
-        setFieldErrors([])
-    }
-
-    const closeAddPanel = () => setShowAddPanel(false)
-
-    return {
-        dashboardHref,
-        selectedJobId,
-        selectedJob,
-        jobs,
-        jobsLoading,
-        showAddPanel,
-        openAddPanel,
-        closeAddPanel,
-        candidates,
-        listLoading,
-        listError,
-        formError,
-        fieldErrors,
-        isSubmitting,
-        saveSucceeded,
-        setJobSelection,
-        handleSubmit,
-        formFields: {
-            name, setName,
-            email, setEmail,
-            phone, setPhone,
-            skills, setSkills,
-            experience, setExperience,
-            currentCompany, setCurrentCompany,
-            currentRole, setCurrentRole,
-            tags, setTags,
-            notes, setNotes,
-            source, setSource,
-        },
-    }
+  return {
+    dashboardHref,
+    selectedJobId,
+    selectedJob: selectedJob as unknown as OrgJob | null,
+    jobs: jobs as unknown as OrgJob[],
+    jobsLoading,
+    showAddPanel,
+    openAddPanel,
+    closeAddPanel,
+    candidates: candidates as unknown as Candidate[],
+    listLoading,
+    listError,
+    formError,
+    fieldErrors,
+    isSubmitting: createCandidateMutation.isPending,
+    saveSucceeded,
+    setJobSelection,
+    handleSubmit,
+    formFields: {
+      name, setName,
+      email, setEmail,
+      phone, setPhone,
+      skills, setSkills,
+      experience, setExperience,
+      currentCompany, setCurrentCompany,
+      currentRole, setCurrentRole,
+      tags, setTags,
+      notes, setNotes,
+      source, setSource,
+    },
+  }
 }

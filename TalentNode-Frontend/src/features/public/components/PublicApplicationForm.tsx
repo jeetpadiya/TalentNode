@@ -24,7 +24,7 @@ export default function PublicApplicationForm({
   onSubmit,
 }: Props) {
   const applicationForm = jobDetail.applicationForm;
-  const basicInfo = applicationForm?.basicInfo ?? {};
+  const basicInfo = applicationForm?.basicInfo;
   const customQuestions = applicationForm?.customQuestions ?? [];
   const linksConfig = applicationForm?.links ?? [];
   const fileUploadsConfig = applicationForm?.fileUploads ?? [];

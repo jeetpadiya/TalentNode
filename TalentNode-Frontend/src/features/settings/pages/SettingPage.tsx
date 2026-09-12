@@ -69,7 +69,7 @@ const SettingPage = () => {
           Settings
         </h1>
         <p className="max-w-2xl text-gray-600">
-Manage organization preferences, templates, and job categories.
+          Manage organization preferences, templates, and job categories.
 
         </p>
       </header>
