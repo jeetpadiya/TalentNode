@@ -12,7 +12,7 @@ export const AnalyticsKpiGrid: React.FC<AnalyticsKpiGridProps> = ({ kpis }) => {
       title: 'Total Applications',
       value: kpis.totalApplications.toLocaleString(),
       subtitle: `${kpis.activeCount} active in pipeline`,
-      badge: `${kpis.totalCandidates} total pool`,
+      badge: `${kpis.totalCandidates} pool`,
       badgeColor: 'bg-blue-50 text-blue-700 border-blue-100',
       icon: FileText,
       iconColor: 'text-blue-600 bg-blue-50',
@@ -21,16 +21,16 @@ export const AnalyticsKpiGrid: React.FC<AnalyticsKpiGridProps> = ({ kpis }) => {
       title: 'Hired Candidates',
       value: kpis.hiredCount.toLocaleString(),
       subtitle: `From ${kpis.totalApplications} total applicants`,
-      badge: `${kpis.offerRate}% conversion`,
+      badge: `${kpis.offerRate}% offer`,
       badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-100',
       icon: CheckCircle2,
       iconColor: 'text-emerald-600 bg-emerald-50',
     },
     {
-      title: 'Avg. Time to Hire',
+      title: 'Time to Hire',
       value: `${kpis.avgTimeToHireDays} days`,
       subtitle: 'From apply to hire decision',
-      badge: kpis.avgTimeToHireDays <= 25 ? 'Fast velocity' : 'Standard velocity',
+      badge: kpis.avgTimeToHireDays <= 25 ? 'Fast' : 'Standard',
       badgeColor: 'bg-indigo-50 text-indigo-700 border-indigo-100',
       icon: Clock,
       iconColor: 'text-indigo-600 bg-indigo-50',
@@ -39,7 +39,7 @@ export const AnalyticsKpiGrid: React.FC<AnalyticsKpiGridProps> = ({ kpis }) => {
       title: 'Active Openings',
       value: kpis.totalActiveJobs.toLocaleString(),
       subtitle: `${kpis.rejectedCount} candidates resolved`,
-      badge: `${kpis.rejectionRate}% rejection rate`,
+      badge: `${kpis.rejectionRate}% rejected`,
       badgeColor: 'bg-amber-50 text-amber-700 border-amber-100',
       icon: Briefcase,
       iconColor: 'text-amber-600 bg-amber-50',
@@ -55,11 +55,11 @@ export const AnalyticsKpiGrid: React.FC<AnalyticsKpiGridProps> = ({ kpis }) => {
             key={card.title}
             className="group relative overflow-hidden rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm transition hover:shadow-md"
           >
-            <div className="flex items-start justify-between gap-3">
-              <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+            <div className="flex min-h-[40px] items-center justify-between gap-2">
+              <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 leading-snug">
                 {card.title}
               </span>
-              <div className={`rounded-xl p-2.5 ${card.iconColor}`}>
+              <div className={`shrink-0 rounded-xl p-2.5 ${card.iconColor}`}>
                 <Icon className="h-5 w-5" />
               </div>
             </div>
@@ -70,12 +70,14 @@ export const AnalyticsKpiGrid: React.FC<AnalyticsKpiGridProps> = ({ kpis }) => {
               </span>
             </div>
 
-            <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3 text-xs">
-              <span className="text-gray-500 truncate">{card.subtitle}</span>
+            <div className="mt-3 flex items-center justify-between gap-2 border-t border-gray-100 pt-3 text-xs">
+              <span className="min-w-0 truncate text-gray-500" title={card.subtitle}>
+                {card.subtitle}
+              </span>
               <span
-                className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-medium ${card.badgeColor}`}
+                className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap ${card.badgeColor}`}
               >
-                <TrendingUp className="h-3 w-3" />
+                <TrendingUp className="h-3 w-3 shrink-0" />
                 {card.badge}
               </span>
             </div>

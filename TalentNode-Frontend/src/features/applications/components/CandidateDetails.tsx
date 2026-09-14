@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
+import { useParams } from 'react-router-dom'
 
 import { useAuthStore } from '../../../app/store/AuthStore'
+import { useInvalidateTalentQueries } from '../../../hooks/useTalentQueries'
 import type { Candidate } from '../../candidates/services/CandidateSchema'
 import { deleteCandidate } from '../../candidates/services/CandidateServices'
 
@@ -39,6 +41,8 @@ const CandidateDetails = ({
   onMoveCandidate,
   onCandidateDeleted,
 }: CandidateDetailsProps) => {
+  const { organizationId } = useParams()
+  const { invalidateApplications } = useInvalidateTalentQueries()
   const role = useAuthStore((s) => s.user?.role)
   const accessToken = useAuthStore((s) => s.accessToken)
   const [activeTab, setActiveTab] = useState<CandidateDetailTab>('notes')
@@ -132,7 +136,12 @@ const CandidateDetails = ({
           onClose={() => setIsResolveModalOpen(false)}
           onResolved={() => {
             setIsResolveModalOpen(false);
-            window.location.reload(); // Quick refresh to clear pipeline
+            if (candidate?._id && onCandidateDeleted) {
+              onCandidateDeleted(candidate._id);
+            } else {
+              void invalidateApplications(organizationId, jobId);
+              onMoveCandidate();
+            }
           }}
         />
       ) : null}

@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 
 import JobsModel from "../models/JobsModel.js";
 import UserModel from "../models/UserModel.js";
+import JobCandidateAssignmentModel from "../models/JobCandidateAssignmentModel.js";
 import {
     createHiringStageSchema,
     updateHiringStageSchema,
@@ -84,8 +85,7 @@ const getHiringStages = async (req: Request, res: Response) => {
             return res.status(400).json({ success: false, message: "Job id is required" });
         }
 
-        const job = await requirePipelineManager(userId, jobId, res);
-        if (job === false) return;
+        const job = await getScopedJob(userId, jobId);
         if (!job) {
             return res.status(404).json({ success: false, message: "Job not found" });
         }
@@ -259,7 +259,8 @@ const deleteHiringStage = async (req: Request, res: Response) => {
             return res.status(400).json({ success: false, message: "Job id is required" });
         }
 
-        const job = await getScopedJob(userId, jobId);
+        const job = await requirePipelineManager(userId, jobId, res);
+        if (job === false) return;
         if (!job) {
             return res.status(404).json({ success: false, message: "Job not found" });
         }
@@ -287,6 +288,20 @@ const deleteHiringStage = async (req: Request, res: Response) => {
 
         job.hiringStages = nextStages as any;
         await job.save();
+
+        // Migrate any candidates currently in the deleted stage to the fallback stage
+        const fallbackStageId = nextStages[0]?._id;
+        if (fallbackStageId) {
+            await JobCandidateAssignmentModel.updateMany(
+                {
+                    jobId,
+                    hiringStageId: stageId,
+                },
+                {
+                    $set: { hiringStageId: fallbackStageId },
+                },
+            );
+        }
 
         return res.status(200).json({
             success: true,

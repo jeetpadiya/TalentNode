@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import UserModel from '../models/UserModel.js';
 import JobsModel from '../models/JobsModel.js';
 import JobCandidateAssignmentModel from '../models/JobCandidateAssignmentModel.js';
+import CandidateModel from '../models/CandidateModel.js';
 import { getParamValue } from '../utils/ParamValue.js';
 
 
@@ -191,10 +192,16 @@ const getApplicationComments = async (
     });
 
     if (!application) {
-      return res.status(404).json({
-        success: false,
-        message:
-        "Candidate application not found",
+      const candidate = await CandidateModel.findOne({
+        _id: assignment.candidateId,
+        organizationId: String(organizationId),
+      }).select("name email");
+
+      return res.status(200).json({
+        success: true,
+        message: "Comments fetched successfully",
+        comments: [],
+        candidate: candidate ? { _id: candidate._id, name: candidate.name, email: candidate.email } : null,
       });
     }
 

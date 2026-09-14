@@ -63,14 +63,14 @@ const CandidateTabs = ({ activeTab, onTabChange, candidate }: CandidateTabsProps
       <div className="mt-5">
         {activeTab === 'notes' ? (
           <CandidateNotesTab
-            jobId={candidate.jobId ?? candidate.applicationId ?? ''}
+            jobId={candidate.jobId ?? ''}
             applicationId={candidate.applicationId ?? ''}
           />
         ) : null}
 
         {activeTab === 'messages' ? (
           <CandidateMessagesTab
-            jobId={candidate.jobId ?? candidate.applicationId ?? ''}
+            jobId={candidate.jobId ?? ''}
             applicationId={candidate.applicationId ?? ''}
           />
         ) : null}
@@ -80,12 +80,15 @@ const CandidateTabs = ({ activeTab, onTabChange, candidate }: CandidateTabsProps
         ) : null}
 
         {activeTab === 'comments' ? (
-          <CandidateCommentsTab applicationId={candidate.applicationId ?? ''} />
+          <CandidateCommentsTab
+            jobId={candidate.jobId ?? ''}
+            applicationId={candidate.applicationId ?? ''}
+          />
         ) : null}
 
         {activeTab === 'review' ? (
           <CandidateReviewTab
-            jobId={candidate.jobId ?? candidate.applicationId ?? ''}
+            jobId={candidate.jobId ?? ''}
             applicationId={candidate.applicationId ?? ''}
           />
         ) : null}

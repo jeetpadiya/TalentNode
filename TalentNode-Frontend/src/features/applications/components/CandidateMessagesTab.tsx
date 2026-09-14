@@ -32,7 +32,7 @@ const CandidateMessagesTab = ({ jobId, applicationId }: CandidateMessagesTabProp
 
   const [templates, setTemplates] = useState<MessageTemplate[]>([])
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('')
-  
+
   const [emails, setEmails] = useState<EmailLog[]>([])
   const [isLoadingEmails, setIsLoadingEmails] = useState(false)
 
@@ -128,7 +128,7 @@ const CandidateMessagesTab = ({ jobId, applicationId }: CandidateMessagesTabProp
         setSelectedTemplateId('')
         // Add new email to top of list
         setEmails((prev) => [data.emailLog, ...prev])
-        
+
         setTimeout(() => setSuccessMsg(null), 3000)
       }
     } catch (err: any) {
@@ -152,7 +152,7 @@ const CandidateMessagesTab = ({ jobId, applicationId }: CandidateMessagesTabProp
             {error}
           </div>
         )}
-        
+
         {successMsg && (
           <div className="mb-4 rounded-md bg-green-50 p-3 text-sm text-green-700">
             {successMsg}
@@ -219,7 +219,7 @@ const CandidateMessagesTab = ({ jobId, applicationId }: CandidateMessagesTabProp
       {/* Email History */}
       <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Email History</h3>
-        
+
         {isLoadingEmails ? (
           <p className="text-sm text-gray-500">Loading history...</p>
         ) : emails.length === 0 ? (
@@ -238,7 +238,7 @@ const CandidateMessagesTab = ({ jobId, applicationId }: CandidateMessagesTabProp
                   <span>Sent by:</span>
                   <div className="flex items-center gap-1">
                     {email.sentBy?.profileImageUrl ? (
-                       <img src={email.sentBy.profileImageUrl} alt="avatar" className="w-4 h-4 rounded-full object-cover" />
+                      <img src={email.sentBy.profileImageUrl} alt="avatar" className="w-4 h-4 rounded-full object-cover" />
                     ) : (
                       <div className="w-4 h-4 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold" style={{ fontSize: '8px' }}>
                         {email.sentBy?.firstName?.[0] ?? '?'}

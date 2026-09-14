@@ -275,65 +275,120 @@ const createCandidate = async (req: Request, res: Response) => {
         const payload = parsedBody.data;
         const jobIdRaw = payload.jobId;
         const { jobId: _omit, ...candidateRest } = payload;
-
-        const newCandidate = await CandidateModel.create({
-            ...candidateRest,
-            name: payload.name.trim(),
-            email: payload.email.trim().toLowerCase(),
-            organizationId,
-        });
-
+        const normalizedEmail = payload.email.trim().toLowerCase();
         const linkJobId =
             jobIdRaw && mongoose.isValidObjectId(jobIdRaw) ? jobIdRaw : undefined;
+
+        let candidate = await CandidateModel.findOne({
+            organizationId,
+            email: normalizedEmail,
+        });
+
+        let isNewCandidate = false;
+        if (!candidate) {
+            candidate = await CandidateModel.create({
+                ...candidateRest,
+                name: payload.name.trim(),
+                email: normalizedEmail,
+                organizationId,
+            });
+            isNewCandidate = true;
+        } else {
+            // Candidate already exists in the org.
+            if (!linkJobId) {
+                return res.status(409).json({
+                    success: false,
+                    message: "A candidate with this email already exists in your organization",
+                });
+            }
+
+            // Update details if candidate previously had missing info
+            let updated = false;
+            if (candidateRest.phone && !candidate.phone) {
+                candidate.phone = candidateRest.phone;
+                updated = true;
+            }
+            if (candidateRest.resume && !candidate.resume) {
+                candidate.resume = candidateRest.resume;
+                updated = true;
+            }
+            if (updated) {
+                await candidate.save();
+            }
+        }
+
         if (linkJobId) {
             const job = await JobsModel.findOne({
                 _id: linkJobId,
                 organizationId,
-            })
-                .select("_id hiringStages");
-            if (job) {
-                const orderedStages = Array.isArray(job.hiringStages)
-                    ? [...job.hiringStages].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-                    : [];
-                const firstStageId =
-                    orderedStages[0]?._id ?? undefined;
-                try {
-                    const assignment = await JobCandidateAssignmentModel.create({
-                        organizationId,
+            }).select("_id hiringStages");
+
+            if (!job) {
+                if (isNewCandidate) {
+                    await CandidateModel.findByIdAndDelete(candidate._id);
+                }
+                return res.status(404).json({
+                    success: false,
+                    message: "Job not found",
+                });
+            }
+
+            const existingAssignment = await JobCandidateAssignmentModel.findOne({
+                jobId: linkJobId,
+                candidateId: candidate._id,
+            });
+
+            if (existingAssignment) {
+                return res.status(409).json({
+                    success: false,
+                    message: "Candidate is already assigned to this job",
+                });
+            }
+
+            const orderedStages = Array.isArray(job.hiringStages)
+                ? [...job.hiringStages].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+                : [];
+            const firstStageId =
+                orderedStages[0]?._id ?? undefined;
+            try {
+                const assignment = await JobCandidateAssignmentModel.create({
+                    organizationId,
+                    jobId: linkJobId,
+                    candidateId: candidate._id,
+                    hiringStageId: firstStageId,
+                });
+                await CandidateApplicationModel.findOneAndUpdate(
+                    {
                         jobId: linkJobId,
-                        candidateId: newCandidate._id,
-                        hiringStageId: firstStageId,
-                    });
-                    await CandidateApplicationModel.findOneAndUpdate(
-                        {
+                        candidateId: candidate._id,
+                        organizationId,
+                    },
+                    {
+                        $setOnInsert: {
                             jobId: linkJobId,
-                            candidateId: newCandidate._id,
+                            candidateId: candidate._id,
                             organizationId,
                         },
-                        {
-                            $setOnInsert: {
-                                jobId: linkJobId,
-                                candidateId: newCandidate._id,
-                                organizationId,
-                            },
-                            $set: {
-                                applicationId: assignment._id,
-                            },
+                        $set: {
+                            applicationId: assignment._id,
                         },
-                        { upsert: true, new: true },
-                    );
-                } catch (assignErr: unknown) {
-                    if (!(assignErr instanceof MongoServerError) || assignErr.code !== 11000) {
-                        throw assignErr;
-                    }
-                    // duplicate assignment — ignore (idempotent-ish)
+                    },
+                    { upsert: true, new: true },
+                );
+            } catch (assignErr: unknown) {
+                if (!(assignErr instanceof MongoServerError) || assignErr.code !== 11000) {
+                    throw assignErr;
                 }
+                return res.status(409).json({
+                    success: false,
+                    message: "Candidate is already assigned to this job",
+                });
             }
         }
 
-        return res.status(201).json({
+        return res.status(isNewCandidate ? 201 : 200).json({
             success: true,
-            candidate: newCandidate,
+            candidate,
         });
     } catch (error) {
         if (error instanceof MongoServerError && error.code === 11000) {

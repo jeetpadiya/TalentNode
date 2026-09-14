@@ -85,7 +85,7 @@ export const sendEmailToCandidate = async (req: Request, res: Response) => {
     });
     await application.save();
 
-    await application.populate('emails.sentBy', 'firstName lastName email profileImageUrl');
+    await application.populate('emails.sentBy', 'username email');
 
     return res.status(200).json({
       success: true,
@@ -137,11 +137,11 @@ export const getCandidateEmails = async (req: Request, res: Response) => {
       organizationId: String(organizationId),
     })
     if (application) {
-      await application.populate('emails.sentBy', 'firstName lastName email profileImageUrl');
+      await application.populate('emails.sentBy', 'username email');
     }
 
     if (!application) {
-      return res.status(404).json({ success: false, message: 'Candidate Application details not found' });
+      return res.status(200).json({ success: true, emails: [] });
     }
 
     const sortedEmails = [...((application as any).emails || [])].sort(

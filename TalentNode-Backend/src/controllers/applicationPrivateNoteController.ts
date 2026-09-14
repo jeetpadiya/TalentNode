@@ -13,36 +13,31 @@ import {
 } from './helpers/controllerUtils.js';
 
 
-import type { IUserRole } from '../types/types.js';
+import type { OrganizationMemberRole } from '../authorization/types.js';
+import { resolveOrganizationMemberRole } from '../authorization/organizationAccess.js';
 import { logError, sendError } from '../utils/errorHandling.js';
-import UserModel from '../models/UserModel.js';
 import JobsModel from '../models/JobsModel.js';
 
-const ALLOWED_ROLES: IUserRole[] = [
+const ALLOWED_ROLES: OrganizationMemberRole[] = [
   'admin',
   'recruiter',
   'hiring_manager',
   'interviewer',
 ];
 
-const resolveUserRoleFromDB = async (userId: string): Promise<IUserRole | null> => {
-  const user = await UserModel.findById(userId).select('role');
-  return (user?.role as IUserRole | undefined) ?? null;
-};
-
 const CreatePrivateNote = async (req: Request, res: Response) => {
   try {
     const userId = await getAuthUserId(req, res);
     if (!userId) return;
 
-    // Role must be resolved from DB (do not trust JWT payload)
-    const userRole = await resolveUserRoleFromDB(userId);
+    const organizationId = await getOrganizationIdFromUserId(userId, res);
+    if (!organizationId) return;
+
+    // Role must be resolved from organization membership
+    const userRole = await resolveOrganizationMemberRole(userId, organizationId);
     if (!userRole || !ALLOWED_ROLES.includes(userRole)) {
       return res.status(403).json({ success: false, message: 'Forbidden: insufficient role' });
     }
-
-    const organizationId = await getOrganizationIdFromUserId(userId, res);
-    if (!organizationId) return;
 
     const jobId = parseObjectId(req.params.jobId, 'job id', res);
     if (!jobId) return;
@@ -121,14 +116,14 @@ const GetPrivateNoteById = async (req: Request, res: Response) => {
     const userId = await getAuthUserId(req, res);
     if (!userId) return;
 
-    // Role must be resolved from DB (do not trust JWT payload)
-    const userRole = await resolveUserRoleFromDB(userId);
+    const organizationId = await getOrganizationIdFromUserId(userId, res);
+    if (!organizationId) return;
+
+    // Role must be resolved from organization membership
+    const userRole = await resolveOrganizationMemberRole(userId, organizationId);
     if (!userRole || !ALLOWED_ROLES.includes(userRole)) {
       return res.status(403).json({ success: false, message: 'Forbidden: insufficient role' });
     }
-
-    const organizationId = await getOrganizationIdFromUserId(userId, res);
-    if (!organizationId) return;
 
     const jobId = parseObjectId(req.params.jobId, 'job id', res);
     if (!jobId) return;
@@ -162,7 +157,17 @@ const GetPrivateNoteById = async (req: Request, res: Response) => {
     });
 
     if (!application) {
-      return res.status(404).json({ success: false, message: 'Candidate application not found' });
+      const candidate = await CandidateModel.findOne({
+        _id: assignment.candidateId,
+        organizationId,
+      }).select('name email');
+
+      return res.status(200).json({
+        success: true,
+        message: 'Private Note fetched successfully',
+        privateNotes: [],
+        candidate: candidate ? { _id: candidate._id, name: candidate.name, email: candidate.email } : null,
+      });
     }
 
     await application.populate('candidateId', 'name email');
@@ -170,7 +175,7 @@ const GetPrivateNoteById = async (req: Request, res: Response) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Priavte Note fetched successfully',
+      message: 'Private Note fetched successfully',
       privateNotes: application.PrivateNote ?? [],
       candidate: application.candidateId,
     });

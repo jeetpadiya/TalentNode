@@ -13,12 +13,17 @@ import { MdDelete } from "react-icons/md";
 
 
 
-const CandidateCommentsTab = ({ applicationId }: { applicationId: string }) => {
+type CandidateCommentsTabProps = {
+  applicationId: string
+  jobId?: string
+}
+
+const CandidateCommentsTab = ({ applicationId, jobId }: CandidateCommentsTabProps) => {
 
   const { accessToken } = useAuthStore()
   const [searchParams] = useSearchParams()
 
-  const selectedJobId = searchParams.get('job')?.trim() ?? ''
+  const selectedJobId = (jobId && jobId.trim()) || searchParams.get('job')?.trim() || ''
 
   const [comment, setComment] = useState('')
   const [comments, setComments] = useState<
@@ -38,8 +43,8 @@ const CandidateCommentsTab = ({ applicationId }: { applicationId: string }) => {
   const fetchComments = async () => {
   try {
 
-    if(!accessToken || !selectedJobId || !applicationId) {
-      return console.log("No access token")
+    if (!accessToken || !selectedJobId || !applicationId) {
+      return
     }
 
     const response = await getApplicationComments(
