@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
-import { User, Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, Sparkles, Check } from 'lucide-react'
+import { User, Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, Check } from 'lucide-react'
 import { useAuthStore } from '../../../app/store/AuthStore'
 import { toast } from '../../../app/ui/toast'
 import { authApi } from '../../../services/api/authApi'
