@@ -122,9 +122,6 @@ const LoginPage = () => {
       <section className="relative z-10 w-full max-w-md rounded-2xl border border-gray-200/80 bg-white/95 p-8 shadow-2xl shadow-indigo-500/5 backdrop-blur-sm sm:p-10">
         {/* Brand Header */}
         <div className="text-center">
-          <div className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-indigo-600 to-blue-600 text-white shadow-lg shadow-indigo-500/25">
-            <Sparkles className="h-6 w-6" />
-          </div>
           <h1 className="mt-4 text-2xl font-extrabold tracking-tight text-gray-900">
             {step === 'email' ? 'Welcome to TalentNode' : 'Welcome back'}
           </h1>
