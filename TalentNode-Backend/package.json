@@ -10,7 +10,8 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "backfill:application-ids": "tsx src/scripts/backfillCandidateApplicationIds.ts"
+    "backfill:application-ids": "tsx src/scripts/backfillCandidateApplicationIds.ts",
+    "seed:dev": "tsx src/scripts/seedDevData.ts"
   },
   "dependencies": {
     "@sendgrid/mail": "^8.1.6",

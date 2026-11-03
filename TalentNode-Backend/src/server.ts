@@ -1,4 +1,5 @@
 import express from 'express';
+import mongoose from 'mongoose';
 import cors from 'cors'
 import dotenv from 'dotenv'
 import ConnectDB from './config/db.js';
@@ -77,8 +78,21 @@ app.use(
   }),
 );
 
-app.get('/api/health', (_req, res) => {
-    return res.status(200).json({ message: "Server is healthy" });
+app.get('/api/health', async (_req, res) => {
+    const isDbConnected = mongoose.connection.readyState === 1;
+    if (isDbConnected && mongoose.connection.db) {
+        try {
+            await mongoose.connection.db.admin().ping();
+        } catch (err) {
+            console.error("Health check DB ping error:", err);
+        }
+    }
+    return res.status(200).json({
+        status: "ok",
+        uptime: Math.floor(process.uptime()),
+        database: isDbConnected ? "connected" : "disconnected",
+        timestamp: new Date().toISOString(),
+    });
 });
 
 app.use('/api/users', userRoutes);

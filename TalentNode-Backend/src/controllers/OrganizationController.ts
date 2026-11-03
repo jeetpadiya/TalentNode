@@ -1,6 +1,8 @@
 import OrganizationModel from "../models/OrganizationModel.js";
 import UserModel from "../models/UserModel.js";
 import type { Request, Response } from "express";
+import JobsModel from "../models/JobsModel.js";
+import CandidateModel from "../models/CandidateModel.js";
 
 import OrganizationTeamMemberModel from "../models/OrganizationTeamMemberModel.js";
 import { isOrganizationAdmin } from "../authorization/organizationAccess.js";
@@ -152,9 +154,40 @@ const getOrganizations = async (req: Request, res: Response) => {
             return res.status(404).json({ success: false, message: "Organizations not found" });
         }
 
+        const orgIds = organizations.map((o) => o._id);
+
+        const [jobsCounts, candidatesCounts, membersCounts] = await Promise.all([
+            JobsModel.aggregate([
+                { $match: { organizationId: { $in: orgIds } } },
+                { $group: { _id: "$organizationId", count: { $sum: 1 } } },
+            ]),
+            CandidateModel.aggregate([
+                { $match: { organizationId: { $in: orgIds } } },
+                { $group: { _id: "$organizationId", count: { $sum: 1 } } },
+            ]),
+            OrganizationTeamMemberModel.aggregate([
+                { $match: { organizationId: { $in: orgIds } } },
+                { $group: { _id: "$organizationId", count: { $sum: 1 } } },
+            ]),
+        ]);
+
+        const jobsMap = new Map(jobsCounts.map((j) => [String(j._id), j.count]));
+        const candidatesMap = new Map(candidatesCounts.map((c) => [String(c._id), c.count]));
+        const membersMap = new Map(membersCounts.map((m) => [String(m._id), m.count]));
+
+        const serializedOrganizations = organizations.map((org) => {
+            const orgIdStr = String(org._id);
+            return {
+                ...serializeOrganization(org),
+                totalJobs: jobsMap.get(orgIdStr) ?? 0,
+                totalCandidates: candidatesMap.get(orgIdStr) ?? 0,
+                totalMembers: membersMap.get(orgIdStr) ?? 0,
+            };
+        });
+
         return res.status(200).json({
             success: true,
-            organizations: organizations.map(serializeOrganization),
+            organizations: serializedOrganizations,
         });
     } catch (error: any) {
         console.error("Error fetching organizations:", error);
@@ -191,9 +224,20 @@ const getOrganizationById = async (req: Request, res: Response) => {
             organizationId: organization._id,
         });
 
+        const [totalJobs, totalCandidates, totalMembers] = await Promise.all([
+            JobsModel.countDocuments({ organizationId: organization._id }),
+            CandidateModel.countDocuments({ organizationId: organization._id }),
+            OrganizationTeamMemberModel.countDocuments({ organizationId: organization._id }),
+        ]);
+
         return res.status(200).json({
             success: true,
-            organization: serializeOrganization(organization),
+            organization: {
+                ...serializeOrganization(organization),
+                totalJobs,
+                totalCandidates,
+                totalMembers,
+            },
         });
     } catch (error) {
         console.error("Error fetching organization by id:", error);

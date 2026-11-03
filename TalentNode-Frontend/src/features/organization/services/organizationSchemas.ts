@@ -9,6 +9,9 @@ export const organizationSchema = z.object({
   allowedDomains: z.array(z.string()),
   logoUrl: z.string().nullable(),
   createdBy: z.string().min(1),
+  totalJobs: z.number().optional().default(0),
+  totalCandidates: z.number().optional().default(0),
+  totalMembers: z.number().optional().default(0),
 })
 
 export const createOrganizationSchema = z.object({

@@ -107,6 +107,9 @@ export interface Organization {
     allowedDomains: string[]
     logoUrl: string | null
     createdBy: string
+    totalJobs?: number
+    totalCandidates?: number
+    totalMembers?: number
     createdAt?: string
     updatedAt?: string
 }
